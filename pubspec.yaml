@@ -1,0 +1,65 @@
+name: kawach
+description: KAWACH – Smart Women Safety System
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  firebase_storage: ^12.3.2
+  firebase_messaging: ^15.1.3
+
+  # Maps & Location
+  google_maps_flutter: ^2.9.0
+  geolocator: ^14.0.2
+
+  # Media
+  record: ^6.2.0
+  speech_to_text: ^7.0.0
+  sensors_plus: ^7.0.0
+  image_picker: ^1.1.2
+  camera: ^0.12.0
+
+  # State Management
+  provider: ^6.1.2
+
+  # Networking
+  http: ^1.2.2
+
+  # Audio & Device
+  audioplayers: ^6.1.0
+  torch_light: ^1.0.1
+  connectivity_plus: ^7.0.0
+  path_provider: ^2.1.4
+
+  # UI Utilities
+  cupertino_icons: ^1.0.8
+  intl: ^0.20.2
+  shared_preferences: ^2.3.3
+  uuid: ^4.5.1
+  permission_handler: ^12.0.1
+  flutter_local_notifications: ^21.0.0
+  url_launcher: ^6.3.1
+  cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
+  lottie: ^3.1.3
+  flutter_spinkit: ^5.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/audio/
+    - assets/animations/
