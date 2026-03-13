@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:camera/camera.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 class CameraEvidenceService extends ChangeNotifier {
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final SupabaseStorageClient _storage = Supabase.instance.client.storage;
   CameraController? _controller;
   bool _isRecording = false;
   String? _currentVideoPath;
@@ -102,10 +102,16 @@ class CameraEvidenceService extends ChangeNotifier {
   }) async {
     try {
       final file = File(filePath);
-      final ref = _storage.ref(
-          'evidence/$userId/$emergencyId/video_${DateTime.now().millisecondsSinceEpoch}.mp4');
-      final task = await ref.putFile(file);
-      return await task.ref.getDownloadURL();
+      final fileName = 'video_${DateTime.now().millisecondsSinceEpoch}.mp4';
+      final path = 'evidence/$userId/$emergencyId/$fileName';
+
+      await _storage.from('evidence_bucket').upload(
+        path,
+        file,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+      );
+      
+      return _storage.from('evidence_bucket').getPublicUrl(path);
     } catch (_) {
       return null;
     }
@@ -118,10 +124,16 @@ class CameraEvidenceService extends ChangeNotifier {
   }) async {
     try {
       final file = File(filePath);
-      final ref = _storage.ref(
-          'evidence/$userId/$emergencyId/photo_${DateTime.now().millisecondsSinceEpoch}.jpg');
-      final task = await ref.putFile(file);
-      return await task.ref.getDownloadURL();
+      final fileName = 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final path = 'evidence/$userId/$emergencyId/$fileName';
+
+      await _storage.from('evidence_bucket').upload(
+        path,
+        file,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+      );
+      
+      return _storage.from('evidence_bucket').getPublicUrl(path);
     } catch (_) {
       return null;
     }

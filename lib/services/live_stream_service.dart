@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 
 import '../utils/constants.dart';
@@ -6,7 +6,7 @@ import '../utils/constants.dart';
 /// Manages live streaming sessions during emergencies.
 /// In production, integrate with a real RTMP/WebRTC service.
 class LiveStreamService extends ChangeNotifier {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final SupabaseClient _db = Supabase.instance.client;
 
   bool _isStreaming = false;
   String? _streamUrl;
@@ -31,12 +31,11 @@ class LiveStreamService extends ChangeNotifier {
 
     // Store stream URL in Firestore so guardians can watch
     await _db
-        .collection(FSCollection.emergencies)
-        .doc(emergencyId)
+        .from(FSCollection.emergencies)
         .update({
       'livestreamUrl': _streamUrl,
-      'streamStartedAt': FieldValue.serverTimestamp(),
-    });
+      'streamStartedAt': DateTime.now().toIso8601String(),
+    }).eq('emergencyId', emergencyId);
   }
 
   // ── Stop stream ──────────────────────────────────────────────
@@ -51,10 +50,11 @@ class LiveStreamService extends ChangeNotifier {
 
   // ── Get stream URL for guardian to watch ─────────────────────
   Future<String?> getStreamUrlForEmergency(String emergencyId) async {
-    final doc = await _db
-        .collection(FSCollection.emergencies)
-        .doc(emergencyId)
-        .get();
-    return doc.data()?['livestreamUrl'] as String?;
+    final res = await _db
+        .from(FSCollection.emergencies)
+        .select('livestreamUrl')
+        .eq('emergencyId', emergencyId)
+        .maybeSingle();
+    return res?['livestreamUrl'] as String?;
   }
 }

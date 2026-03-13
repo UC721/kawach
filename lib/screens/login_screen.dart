@@ -60,8 +60,8 @@ class _LoginScreenState extends State<LoginScreen>
       if (uid != null && mounted) {
         debugPrint('LoginScreen: Loading user data');
         await context.read<UserService>().loadCurrentUser(uid);
-        debugPrint('LoginScreen: Saving FCM token');
-        await context.read<NotificationService>().saveFcmToken(uid);
+        // debugPrint('LoginScreen: Saving FCM token'); // removed FCM
+        // await context.read<NotificationService>().saveFcmToken(uid); // removed FCM
         debugPrint('LoginScreen: Navigating to Dashboard');
         Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
       } else {
@@ -99,8 +99,8 @@ class _LoginScreenState extends State<LoginScreen>
         );
         debugPrint('LoginScreen: Creating User in DB');
         await context.read<UserService>().createUser(user);
-        debugPrint('LoginScreen: Saving FCM Token');
-        await context.read<NotificationService>().saveFcmToken(user.userId);
+        // debugPrint('LoginScreen: Saving FCM Token');
+        // await context.read<NotificationService>().saveFcmToken(user.userId);
         debugPrint('LoginScreen: Navigating to Dashboard');
         Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
       } else {

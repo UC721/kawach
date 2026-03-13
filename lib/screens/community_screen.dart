@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/report_model.dart';
 import '../utils/constants.dart';
@@ -52,19 +52,18 @@ class CommunityScreen extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection(FSCollection.reports)
-                  .orderBy('createdAt', descending: true)
-                  .limit(50)
-                  .snapshots(),
+            child: StreamBuilder<List<Map<String, dynamic>>>(
+              stream: Supabase.instance.client
+                  .from(FSCollection.reports)
+                  .stream(primaryKey: ['reportId'])
+                  .order('created_at', ascending: false),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
                       child: CircularProgressIndicator(
                           color: AppColors.primary));
                 }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -86,8 +85,8 @@ class CommunityScreen extends StatelessWidget {
                     ),
                   );
                 }
-                final reports = snapshot.data!.docs
-                    .map((d) => ReportModel.fromFirestore(d))
+                final reports = snapshot.data!
+                    .map((d) => ReportModel.fromMap(d))
                     .toList();
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16),

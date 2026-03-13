@@ -1,6 +1,5 @@
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
@@ -19,7 +18,7 @@ import 'offline_emergency_service.dart';
 
 /// Central emergency pipeline – all SOS triggers call [triggerEmergency].
 class EmergencyService extends ChangeNotifier {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final SupabaseClient _db = Supabase.instance.client;
   final _uuid = const Uuid();
 
   EmergencyModel? _activeEmergency;
@@ -48,7 +47,7 @@ class EmergencyService extends ChangeNotifier {
     _stealthMode = false;
     notifyListeners();
 
-    final userId = FirebaseAuth.instance.currentUser?.uid;
+    final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return;
 
     // 1. Get current location
@@ -57,9 +56,8 @@ class EmergencyService extends ChangeNotifier {
       pos = await locationService.getCurrentPosition();
     } catch (_) {}
 
-    final geoPoint = pos != null
-        ? GeoPoint(pos.latitude, pos.longitude)
-        : null;
+    final lat = pos?.latitude;
+    final lng = pos?.longitude;
 
     // 2. Create emergency document in Firestore
     final emergencyId = _uuid.v4();
@@ -68,15 +66,15 @@ class EmergencyService extends ChangeNotifier {
       userId: userId,
       status: EmergencyStatus.active,
       triggeredBy: trigger,
-      location: geoPoint,
+      lat: lat,
+      lng: lng,
       createdAt: DateTime.now(),
     );
 
     try {
       await _db
-          .collection(FSCollection.emergencies)
-          .doc(emergencyId)
-          .set(emergency.toMap());
+          .from(FSCollection.emergencies)
+          .insert(emergency.toMap());
     } catch (e) {
       // Offline fallback – store locally
       await offlineService.saveEmergencyLocally(emergency);
@@ -105,14 +103,15 @@ class EmergencyService extends ChangeNotifier {
       guardians: guardians,
       emergencyId: emergencyId,
       userId: userId,
-      location: geoPoint,
+      lat: lat,
+      lng: lng,
     ));
 
     // 8. SMS backup
-    final phone = userService.currentUserModel?.phone ?? '';
     unawaited(smsService.sendEmergencySms(
       guardians: guardians,
-      location: geoPoint,
+      lat: lat,
+      lng: lng,
       userName: userService.currentUserModel?.name ?? 'User',
     ));
 
@@ -130,7 +129,7 @@ class EmergencyService extends ChangeNotifier {
     String emergencyId,
   ) async {
     try {
-      final audioPath = await audioService.startRecording();
+      await audioService.startRecording(); // Ignored returned path
       // Record for 5 minutes then upload
       await Future.delayed(const Duration(minutes: 5));
       final audioUrl = await audioService.stopAndUpload(
@@ -141,9 +140,9 @@ class EmergencyService extends ChangeNotifier {
             emergencyId: emergencyId,
             audioUrl: audioUrl);
         await _db
-            .collection(FSCollection.emergencies)
-            .doc(emergencyId)
-            .update({'audioUrl': audioUrl});
+            .from(FSCollection.emergencies)
+            .update({'audioUrl': audioUrl})
+            .eq('emergencyId', emergencyId);
       }
     } catch (_) {}
   }
@@ -164,9 +163,9 @@ class EmergencyService extends ChangeNotifier {
             emergencyId: emergencyId,
             videoUrl: videoUrl);
         await _db
-            .collection(FSCollection.emergencies)
-            .doc(emergencyId)
-            .update({'videoUrl': videoUrl});
+            .from(FSCollection.emergencies)
+            .update({'videoUrl': videoUrl})
+            .eq('emergencyId', emergencyId);
       }
     } catch (_) {}
   }
@@ -196,12 +195,11 @@ class EmergencyService extends ChangeNotifier {
     await streamService.stopStream();
 
     await _db
-        .collection(FSCollection.emergencies)
-        .doc(emergencyId)
+        .from(FSCollection.emergencies)
         .update({
       'status': EmergencyStatus.resolved.name,
-      'resolvedAt': FieldValue.serverTimestamp(),
-    });
+      'resolvedAt': DateTime.now().toIso8601String(),
+    }).eq('emergencyId', emergencyId);
 
     _activeEmergency = null;
     _isActive = false;
@@ -212,24 +210,28 @@ class EmergencyService extends ChangeNotifier {
   // ── STREAM ACTIVE EMERGENCY ──────────────────────────────────
   Stream<EmergencyModel?> streamEmergency(String emergencyId) {
     return _db
-        .collection(FSCollection.emergencies)
-        .doc(emergencyId)
-        .snapshots()
-        .map((doc) =>
-            doc.exists ? EmergencyModel.fromFirestore(doc) : null);
+        .from(FSCollection.emergencies)
+        .stream(primaryKey: ['emergencyId'])
+        .eq('emergencyId', emergencyId)
+        .map((docs) => docs.isNotEmpty ? EmergencyModel.fromMap(docs.first) : null);
   }
 
   // ── GUARDIAN VIEW: stream latest active emergency of user ───
   Stream<EmergencyModel?> streamActiveEmergencyForUser(String userId) {
     return _db
-        .collection(FSCollection.emergencies)
-        .where('userId', isEqualTo: userId)
-        .where('status', isEqualTo: EmergencyStatus.active.name)
-        .orderBy('createdAt', descending: true)
-        .limit(1)
-        .snapshots()
-        .map((snap) => snap.docs.isNotEmpty
-            ? EmergencyModel.fromFirestore(snap.docs.first)
-            : null);
+        .from(FSCollection.emergencies)
+        .stream(primaryKey: ['emergencyId'])
+        .eq('userId', userId)
+        .map((docs) {
+          final activeDocs = docs.where((d) => d['status'] == EmergencyStatus.active.name).toList();
+          activeDocs.sort((a, b) {
+            final dateA = a['created_at'] ?? a['createdAt'];
+            final dateB = b['created_at'] ?? b['createdAt'];
+            return (dateB as String).compareTo(dateA as String);
+          });
+          return activeDocs.isNotEmpty
+              ? EmergencyModel.fromMap(activeDocs.first)
+              : null;
+        });
   }
 }

@@ -1,10 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class GuardianNetworkModel {
   final String volunteerId;
   final String userId; // volunteer's user account
   final String name;
-  final GeoPoint? location;
+  final double? lat;
+  final double? lng;
   final bool verified;
   final bool availability;
   final String? phone;
@@ -14,35 +14,36 @@ class GuardianNetworkModel {
     required this.volunteerId,
     required this.userId,
     required this.name,
-    this.location,
+    this.lat,
+    this.lng,
     required this.verified,
     required this.availability,
     this.phone,
     this.lastSeen,
   });
 
-  factory GuardianNetworkModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory GuardianNetworkModel.fromMap(Map<String, dynamic> data) {
     return GuardianNetworkModel(
-      volunteerId: doc.id,
+      volunteerId: data['volunteerId'] ?? '',
       userId: data['userId'] ?? '',
       name: data['name'] ?? '',
-      location: data['location'] as GeoPoint?,
+      lat: (data['lat'] as num?)?.toDouble(),
+      lng: (data['lng'] as num?)?.toDouble(),
       verified: data['verified'] ?? false,
       availability: data['availability'] ?? false,
       phone: data['phone'],
-      lastSeen: (data['lastSeen'] as Timestamp?)?.toDate(),
+      lastSeen: data['lastSeen'] != null ? DateTime.parse(data['lastSeen']) : null,
     );
   }
 
   Map<String, dynamic> toMap() => {
         'userId': userId,
         'name': name,
-        'location': location,
+        'lat': lat,
+        'lng': lng,
         'verified': verified,
         'availability': availability,
         'phone': phone,
-        'lastSeen':
-            lastSeen != null ? Timestamp.fromDate(lastSeen!) : null,
+        'lastSeen': lastSeen?.toIso8601String(),
       };
 }

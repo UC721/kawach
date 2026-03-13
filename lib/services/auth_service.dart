@@ -1,15 +1,22 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService extends ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoTrueClient _auth = Supabase.instance.client.auth;
   static const String _authKey = 'is_authenticated';
 
   bool _isAuthenticated = false;
 
   AuthService() {
     _loadAuthState();
+    _auth.onAuthStateChange.listen((data) {
+      if (data.session != null) {
+        _setAuthState(true);
+      } else {
+        _setAuthState(false);
+      }
+    });
   }
 
   Future<void> _loadAuthState() async {
@@ -25,19 +32,22 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
-  String? get currentUserId => _isAuthenticated ? 'mock_user_123' : null;
+  String? get currentUserId => _auth.currentUser?.id;
   
-  Stream<dynamic> get authStateChanges async* { yield null; } 
+  Stream<AuthState> get authStateChanges => _auth.onAuthStateChange; 
   bool get isAuthenticated => _isAuthenticated;
 
   Future<String?> signInWithEmail(String email, String password) async {
     try {
-      await Future.delayed(const Duration(seconds: 1));
-      if (email.isEmpty || password.isEmpty) {
-         throw Exception('Email and password cannot be empty.');
+      final AuthResponse res = await _auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      if (res.user != null) {
+        await _setAuthState(true);
+        return res.user?.id; 
       }
-      await _setAuthState(true);
-      return 'mock_user_123'; 
+      return null;
     } catch (e) {
       throw e.toString();
     }
@@ -45,12 +55,15 @@ class AuthService extends ChangeNotifier {
 
   Future<String?> signUpWithEmail(String email, String password) async {
     try {
-      await Future.delayed(const Duration(seconds: 1));
-      if (email.isEmpty || password.length < 6) {
-         throw Exception('Please enter a valid email and a password with at least 6 characters.');
+      final AuthResponse res = await _auth.signUp(
+        email: email,
+        password: password,
+      );
+      if (res.user != null) {
+        await _setAuthState(true);
+        return res.user?.id;
       }
-      await _setAuthState(true);
-      return 'mock_user_123';
+      return null;
     } catch (e) {
       throw e.toString();
     }
@@ -74,9 +87,16 @@ class AuthService extends ChangeNotifier {
 
   Future<String?> signInWithPhoneCredential(dynamic credential) async {
     try {
-      await Future.delayed(const Duration(seconds: 1));
-      await _setAuthState(true);
-      return 'mock_user_123';
+      final AuthResponse res = await _auth.verifyOTP(
+        type: OtpType.sms,
+        token: credential.toString(),
+        phone: 'phone_number_from_elsewhere', // Simplified for demo, needs proper handling
+      );
+      if (res.user != null) {
+        await _setAuthState(true);
+        return res.user?.id;
+      }
+      return null;
     } catch (e) {
       throw e.toString();
     }

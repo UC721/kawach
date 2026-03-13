@@ -22,6 +22,8 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
   Set<Polyline> _polylines = {};
   Set<Marker> _markers = {};
   bool _loading = false;
+  CameraPosition? _currentCameraPosition;
+  bool _isCameraMoving = false;
 
   @override
   void initState() {
@@ -111,12 +113,50 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
             polylines: _polylines,
             markers: _markers,
             onMapCreated: (c) => _mapController = c,
-            onLongPress: (latLng) {
+            onCameraMoveStarted: () => setState(() => _isCameraMoving = true),
+            onCameraMove: (pos) => _currentCameraPosition = pos,
+            onCameraIdle: () => setState(() => _isCameraMoving = false),
+            onTap: (latLng) {
               setState(() => _destination = latLng);
               _calculateRoute();
             },
+            style: _mapStyle,
           ),
+          
+          // Central Crosshair Pin
           if (_destination == null)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 35),
+                child: Icon(
+                  Icons.location_on_rounded,
+                  size: 44,
+                  color: _isCameraMoving ? AppColors.primary.withOpacity(0.7) : AppColors.primary,
+                ),
+              ),
+            ),
+
+          if (_destination == null && !_isCameraMoving)
+            Positioned(
+              bottom: 120,
+              left: 50,
+              right: 50,
+              child: ElevatedButton(
+                onPressed: () {
+                  if (_currentCameraPosition != null) {
+                    setState(() => _destination = _currentCameraPosition!.target);
+                    _calculateRoute();
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                ),
+                child: const Text('Confirm Destination', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          if (_destination == null && _isCameraMoving)
             Positioned(
               bottom: 80,
               left: 16,
@@ -129,11 +169,11 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.touch_app_outlined,
+                    Icon(Icons.gps_fixed,
                         color: AppColors.primary, size: 20),
                     SizedBox(width: 8),
                     Text(
-                      'Long press on map to set destination',
+                      'Move map to your destination...',
                       style: TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                   ],
@@ -181,6 +221,13 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
       }
     }
   }
+
+  static const _mapStyle = '''[{"elementType":"geometry","stylers":[{"color":"#212121"}]},
+{"elementType":"labels.icon","stylers":[{"visibility":"off"}]},
+{"elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},
+{"elementType":"labels.text.stroke","stylers":[{"color":"#212121"}]},
+{"featureType":"road","elementType":"geometry","stylers":[{"color":"#2c2c2c"}]},
+{"featureType":"water","elementType":"geometry","stylers":[{"color":"#000000"}]}]''';
 }
 
 class _SafePlaceBtn extends StatelessWidget {

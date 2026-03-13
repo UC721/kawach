@@ -1,5 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -7,7 +6,7 @@ import '../models/guardian_network_model.dart';
 import '../utils/constants.dart';
 
 class GuardianNetworkService extends ChangeNotifier {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final SupabaseClient _db = Supabase.instance.client;
 
   List<GuardianNetworkModel> _nearbyVolunteers = [];
   List<GuardianNetworkModel> get nearbyVolunteers => _nearbyVolunteers;
@@ -22,14 +21,15 @@ class GuardianNetworkService extends ChangeNotifier {
     required double lat,
     required double lng,
   }) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) return;
 
     final volunteer = GuardianNetworkModel(
       volunteerId: uid,
       userId: uid,
       name: name,
-      location: GeoPoint(lat, lng),
+      lat: lat,
+      lng: lng,
       verified: false, // Admin must verify
       availability: true,
       phone: phone,
@@ -37,9 +37,8 @@ class GuardianNetworkService extends ChangeNotifier {
     );
 
     await _db
-        .collection(FSCollection.guardianNetwork)
-        .doc(uid)
-        .set(volunteer.toMap());
+        .from(FSCollection.guardianNetwork)
+        .upsert(volunteer.toMap());
 
     _isRegistered = true;
     notifyListeners();
@@ -51,21 +50,22 @@ class GuardianNetworkService extends ChangeNotifier {
     double? lat,
     double? lng,
   }) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) return;
 
     final update = <String, dynamic>{
       'availability': available,
-      'lastSeen': FieldValue.serverTimestamp(),
+      'lastSeen': DateTime.now().toIso8601String(),
     };
     if (lat != null && lng != null) {
-      update['location'] = GeoPoint(lat, lng);
+      update['lat'] = lat;
+      update['lng'] = lng;
     }
 
     await _db
-        .collection(FSCollection.guardianNetwork)
-        .doc(uid)
-        .update(update);
+        .from(FSCollection.guardianNetwork)
+        .update(update)
+        .eq('volunteerId', uid);
     notifyListeners();
   }
 
@@ -75,18 +75,21 @@ class GuardianNetworkService extends ChangeNotifier {
     required double lng,
     double radiusMeters = AppThresholds.volunteerSearchRadius,
   }) async {
-    final snap = await _db
-        .collection(FSCollection.guardianNetwork)
-        .where('availability', isEqualTo: true)
-        .where('verified', isEqualTo: true)
-        .get();
+    // In a real scenario, this would ideally be done via a PostGIS RPC function:
+    // final res = await _db.rpc('find_nearby_volunteers', params: {'user_lat': lat, 'user_lng': lng, 'radius': radiusMeters});
+    // For now, we fetch all available and verified and filter in Dart (same as Firestore before).
+    final res = await _db
+        .from(FSCollection.guardianNetwork)
+        .select()
+        .eq('availability', true)
+        .eq('verified', true);
 
-    _nearbyVolunteers = snap.docs
-        .map((d) => GuardianNetworkModel.fromFirestore(d))
+    _nearbyVolunteers = (res as List)
+        .map((d) => GuardianNetworkModel.fromMap(d))
         .where((v) {
-          if (v.location == null) return false;
+          if (v.lat == null || v.lng == null) return false;
           return Geolocator.distanceBetween(
-                  lat, lng, v.location!.latitude, v.location!.longitude) <=
+                  lat, lng, v.lat!, v.lng!) <=
               radiusMeters;
         })
         .toList();
@@ -106,12 +109,13 @@ class GuardianNetworkService extends ChangeNotifier {
 
     // Store alert references so volunteers can pull details
     for (final vol in volunteers) {
-      await _db.collection('volunteerAlerts').add({
+      await _db.from(FSCollection.volunteerAlerts).insert({
         'volunteerId': vol.volunteerId,
         'emergencyId': emergencyId,
         'userId': userId,
-        'location': GeoPoint(lat, lng),
-        'sentAt': FieldValue.serverTimestamp(),
+        'lat': lat,
+        'lng': lng,
+        'sentAt': DateTime.now().toIso8601String(),
         'status': 'pending',
       });
     }
@@ -120,10 +124,10 @@ class GuardianNetworkService extends ChangeNotifier {
   // ── Stream for volunteer list ─────────────────────────────────
   Stream<List<GuardianNetworkModel>> streamVolunteers() {
     return _db
-        .collection(FSCollection.guardianNetwork)
-        .where('verified', isEqualTo: true)
-        .snapshots()
-        .map((snap) =>
-            snap.docs.map((d) => GuardianNetworkModel.fromFirestore(d)).toList());
+        .from(FSCollection.guardianNetwork)
+        .stream(primaryKey: ['volunteerId'])
+        .eq('verified', true)
+        .map((docs) =>
+            docs.map((d) => GuardianNetworkModel.fromMap(d)).toList());
   }
 }

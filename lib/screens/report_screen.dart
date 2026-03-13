@@ -2,9 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
 
@@ -22,7 +22,7 @@ class ReportScreen extends StatefulWidget {
 
 class _ReportScreenState extends State<ReportScreen> {
   final _descCtrl = TextEditingController();
-  File? _image;
+  XFile? _image;
   bool _isSubmitting = false;
   Position? _position;
 
@@ -43,7 +43,7 @@ class _ReportScreenState extends State<ReportScreen> {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.camera);
     if (picked != null) {
-      setState(() => _image = File(picked.path));
+      setState(() => _image = picked);
     }
   }
 
@@ -52,33 +52,36 @@ class _ReportScreenState extends State<ReportScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final uid = FirebaseAuth.instance.currentUser?.uid ?? 'anon';
+      final uid = Supabase.instance.client.auth.currentUser?.id ?? 'anon';
       String? imageUrl;
 
       if (_image != null) {
-        final ref = FirebaseStorage.instance.ref(
-            'reports/$uid/${const Uuid().v4()}.jpg');
-        final task = await ref.putFile(_image!);
-        imageUrl = await task.ref.getDownloadURL();
+        final fileName = '${const Uuid().v4()}.jpg';
+        final path = 'reports/$uid/$fileName';
+        
+        final bytes = await _image!.readAsBytes();
+        
+        await Supabase.instance.client.storage.from('incident-photos').uploadBinary(
+          path,
+          bytes,
+          fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+        );
+        imageUrl = Supabase.instance.client.storage.from('incident-photos').getPublicUrl(path);
       }
-
-      final geoPoint = _position != null
-          ? GeoPoint(_position!.latitude, _position!.longitude)
-          : null;
 
       final report = ReportModel(
         reportId: const Uuid().v4(),
         userId: uid,
         description: _descCtrl.text.trim(),
         imageUrl: imageUrl,
-        location: geoPoint,
+        lat: _position?.latitude,
+        lng: _position?.longitude,
         createdAt: DateTime.now(),
       );
 
-      await FirebaseFirestore.instance
-          .collection(FSCollection.reports)
-          .doc(report.reportId)
-          .set(report.toMap());
+      await Supabase.instance.client
+          .from(FSCollection.reports)
+          .insert(report.toMap());
 
       // Trigger danger zone aggregation
       await context.read<DangerZoneService>().aggregateFromReports();
@@ -175,7 +178,9 @@ class _ReportScreenState extends State<ReportScreen> {
                 child: _image != null
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(14),
-                        child: Image.file(_image!, fit: BoxFit.cover),
+                        child: kIsWeb
+                            ? Image.network(_image!.path, fit: BoxFit.cover)
+                            : Image.file(File(_image!.path), fit: BoxFit.cover),
                       )
                     : const Column(
                         mainAxisAlignment: MainAxisAlignment.center,

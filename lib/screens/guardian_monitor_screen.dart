@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../services/location_service.dart';
@@ -61,7 +61,7 @@ class _GuardianMonitorScreenState extends State<GuardianMonitorScreen> {
           ),
           // Live map
           Expanded(
-            child: StreamBuilder<GeoPoint?>(
+            child: StreamBuilder<Map<String, double>?>(
               stream: context
                   .read<LocationService>()
                   .streamUserLocation(uid),
@@ -69,7 +69,7 @@ class _GuardianMonitorScreenState extends State<GuardianMonitorScreen> {
                 final geoPoint = snap.data;
                 if (geoPoint != null) {
                   _userLatLng = LatLng(
-                      geoPoint.latitude, geoPoint.longitude);
+                      geoPoint['lat']!, geoPoint['lng']!);
                   _mapController?.animateCamera(
                       CameraUpdate.newLatLng(_userLatLng!));
                 }

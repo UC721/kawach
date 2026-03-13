@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
@@ -7,7 +7,7 @@ import '../models/evidence_model.dart';
 import '../utils/constants.dart';
 
 class EvidenceVaultService extends ChangeNotifier {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final SupabaseClient _db = Supabase.instance.client;
   final _uuid = const Uuid();
 
   Future<void> saveEvidence({
@@ -17,38 +17,33 @@ class EvidenceVaultService extends ChangeNotifier {
     String? videoUrl,
     Position? position,
   }) async {
-    GeoPoint? geoPoint;
-    if (position != null) {
-      geoPoint = GeoPoint(position.latitude, position.longitude);
-    }
-
     final evidence = EvidenceModel(
       evidenceId: _uuid.v4(),
       userId: userId,
       emergencyId: emergencyId,
       audioUrl: audioUrl,
       videoUrl: videoUrl,
-      location: geoPoint,
+      lat: position?.latitude,
+      lng: position?.longitude,
       timestamp: DateTime.now(),
     );
 
     await _db
-        .collection(FSCollection.evidenceVault)
-        .doc(evidence.evidenceId)
-        .set(evidence.toMap());
+        .from(FSCollection.evidenceVault)
+        .insert(evidence.toMap());
   }
 
   Future<List<EvidenceModel>> getEvidence({
     required String userId,
     required String emergencyId,
   }) async {
-    final snap = await _db
-        .collection(FSCollection.evidenceVault)
-        .where('userId', isEqualTo: userId)
-        .where('emergencyId', isEqualTo: emergencyId)
-        .orderBy('timestamp', descending: false)
-        .get();
-    return snap.docs.map((d) => EvidenceModel.fromFirestore(d)).toList();
+    final res = await _db
+        .from(FSCollection.evidenceVault)
+        .select()
+        .eq('userId', userId)
+        .eq('emergencyId', emergencyId)
+        .order('timestamp', ascending: true);
+    return (res as List).map((d) => EvidenceModel.fromMap(d)).toList();
   }
 
   Stream<List<EvidenceModel>> streamEvidence({
@@ -56,12 +51,13 @@ class EvidenceVaultService extends ChangeNotifier {
     required String emergencyId,
   }) {
     return _db
-        .collection(FSCollection.evidenceVault)
-        .where('userId', isEqualTo: userId)
-        .where('emergencyId', isEqualTo: emergencyId)
-        .orderBy('timestamp', descending: false)
-        .snapshots()
-        .map((snap) =>
-            snap.docs.map((d) => EvidenceModel.fromFirestore(d)).toList());
+        .from(FSCollection.evidenceVault)
+        .stream(primaryKey: ['evidenceId'])
+        .eq('userId', userId)
+        .map((docs) {
+          final filtered = docs.where((d) => d['emergencyId'] == emergencyId).toList();
+          filtered.sort((a, b) => (a['timestamp'] as String).compareTo(b['timestamp'] as String));
+          return filtered.map((d) => EvidenceModel.fromMap(d)).toList();
+        });
   }
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/user_service.dart';
 import '../services/auth_service.dart';
 import '../models/guardian_model.dart';
@@ -31,7 +30,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadData() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) return;
     await context.read<UserService>().loadCurrentUser(uid);
     final user = context.read<UserService>().currentUserModel;
@@ -44,7 +43,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) return;
     await context.read<UserService>().updateUser(uid, {
       'name': _nameCtrl.text.trim(),
@@ -59,7 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _addGuardian() async {
     if (_gNameCtrl.text.isEmpty || _gPhoneCtrl.text.isEmpty) return;
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final uid = Supabase.instance.client.auth.currentUser?.id ?? '';
     final guardian = GuardianModel(
       guardianId: '',
       userId: uid,
@@ -197,7 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   guardian: g,
                   onDelete: () async {
                     final uid =
-                        FirebaseAuth.instance.currentUser?.uid ?? '';
+                        Supabase.instance.client.auth.currentUser?.id ?? '';
                     await context
                         .read<UserService>()
                         .removeGuardian(uid, g.guardianId);

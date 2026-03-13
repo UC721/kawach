@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class EvidenceModel {
   final String evidenceId;
@@ -6,7 +5,8 @@ class EvidenceModel {
   final String emergencyId;
   final String? audioUrl;
   final String? videoUrl;
-  final GeoPoint? location;
+  final double? lat;
+  final double? lng;
   final DateTime timestamp;
 
   EvidenceModel({
@@ -15,20 +15,23 @@ class EvidenceModel {
     required this.emergencyId,
     this.audioUrl,
     this.videoUrl,
-    this.location,
+    this.lat,
+    this.lng,
     required this.timestamp,
   });
 
-  factory EvidenceModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory EvidenceModel.fromMap(Map<String, dynamic> data) {
     return EvidenceModel(
-      evidenceId: doc.id,
+      evidenceId: data['evidenceId'] ?? '',
       userId: data['userId'] ?? '',
       emergencyId: data['emergencyId'] ?? '',
       audioUrl: data['audioUrl'],
       videoUrl: data['videoUrl'],
-      location: data['location'] as GeoPoint?,
-      timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      lat: (data['lat'] as num?)?.toDouble(),
+      lng: (data['lng'] as num?)?.toDouble(),
+      timestamp: data['timestamp'] != null
+          ? DateTime.parse(data['timestamp'])
+          : DateTime.now(),
     );
   }
 
@@ -37,7 +40,8 @@ class EvidenceModel {
         'emergencyId': emergencyId,
         'audioUrl': audioUrl,
         'videoUrl': videoUrl,
-        'location': location,
-        'timestamp': Timestamp.fromDate(timestamp),
+        'lat': lat,
+        'lng': lng,
+        'timestamp': timestamp.toIso8601String(),
       };
 }

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -11,11 +11,12 @@ import '../utils/constants.dart';
 class SmsService extends ChangeNotifier {
   Future<void> sendEmergencySms({
     required List<GuardianModel> guardians,
-    GeoPoint? location,
+    double? lat,
+    double? lng,
     required String userName,
   }) async {
-    final locationStr = location != null
-        ? 'https://maps.google.com/?q=${location.latitude},${location.longitude}'
+    final locationStr = (lat != null && lng != null)
+        ? 'https://maps.google.com/?q=$lat,$lng'
         : 'Location unavailable';
 
     final message =

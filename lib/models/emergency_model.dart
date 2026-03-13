@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum EmergencyStatus { active, resolved, cancelled }
 
@@ -17,7 +16,8 @@ class EmergencyModel {
   final String userId;
   final EmergencyStatus status;
   final EmergencyTrigger triggeredBy;
-  final GeoPoint? location;
+  final double? lat;
+  final double? lng;
   final String? audioUrl;
   final String? videoUrl;
   final String? livestreamUrl;
@@ -29,7 +29,8 @@ class EmergencyModel {
     required this.userId,
     required this.status,
     required this.triggeredBy,
-    this.location,
+    this.lat,
+    this.lng,
     this.audioUrl,
     this.videoUrl,
     this.livestreamUrl,
@@ -37,39 +38,44 @@ class EmergencyModel {
     this.resolvedAt,
   });
 
-  factory EmergencyModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory EmergencyModel.fromMap(Map<String, dynamic> data) {
     return EmergencyModel(
-      emergencyId: doc.id,
-      userId: data['userId'] ?? '',
+      emergencyId: data['emergencyId'] ?? data['emergency_id'] ?? '',
+      userId: data['userId'] ?? data['user_id'] ?? '',
       status: EmergencyStatus.values.firstWhere(
         (e) => e.name == data['status'],
         orElse: () => EmergencyStatus.active,
       ),
       triggeredBy: EmergencyTrigger.values.firstWhere(
-        (e) => e.name == data['triggeredBy'],
+        (e) => e.name == (data['triggeredBy'] ?? data['triggered_by']),
         orElse: () => EmergencyTrigger.manual,
       ),
-      location: data['location'] as GeoPoint?,
-      audioUrl: data['audioUrl'],
-      videoUrl: data['videoUrl'],
-      livestreamUrl: data['livestreamUrl'],
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      resolvedAt: (data['resolvedAt'] as Timestamp?)?.toDate(),
+      lat: (data['lat'] as num?)?.toDouble(),
+      lng: (data['lng'] as num?)?.toDouble(),
+      audioUrl: data['audioUrl'] ?? data['audio_url'],
+      videoUrl: data['videoUrl'] ?? data['video_url'],
+      livestreamUrl: data['livestreamUrl'] ?? data['livestream_url'],
+      createdAt: (data['createdAt'] ?? data['created_at']) != null
+          ? DateTime.parse(data['createdAt'] ?? data['created_at'])
+          : DateTime.now(),
+      resolvedAt: (data['resolvedAt'] ?? data['resolved_at']) != null
+          ? DateTime.parse(data['resolvedAt'] ?? data['resolved_at'])
+          : null,
     );
   }
 
   Map<String, dynamic> toMap() => {
-        'userId': userId,
+        'emergency_id': emergencyId,
+        'user_id': userId,
         'status': status.name,
-        'triggeredBy': triggeredBy.name,
-        'location': location,
-        'audioUrl': audioUrl,
-        'videoUrl': videoUrl,
-        'livestreamUrl': livestreamUrl,
-        'createdAt': Timestamp.fromDate(createdAt),
-        'resolvedAt':
-            resolvedAt != null ? Timestamp.fromDate(resolvedAt!) : null,
+        'triggered_by': triggeredBy.name,
+        'lat': lat,
+        'lng': lng,
+        'audio_url': audioUrl,
+        'video_url': videoUrl,
+        'livestream_url': livestreamUrl,
+        'created_at': createdAt.toIso8601String(),
+        'resolved_at': resolvedAt?.toIso8601String(),
       };
 
   EmergencyModel copyWith({
@@ -77,7 +83,8 @@ class EmergencyModel {
     String? audioUrl,
     String? videoUrl,
     String? livestreamUrl,
-    GeoPoint? location,
+    double? lat,
+    double? lng,
     DateTime? resolvedAt,
   }) {
     return EmergencyModel(
@@ -85,7 +92,8 @@ class EmergencyModel {
       userId: userId,
       status: status ?? this.status,
       triggeredBy: triggeredBy,
-      location: location ?? this.location,
+      lat: lat ?? this.lat,
+      lng: lng ?? this.lng,
       audioUrl: audioUrl ?? this.audioUrl,
       videoUrl: videoUrl ?? this.videoUrl,
       livestreamUrl: livestreamUrl ?? this.livestreamUrl,

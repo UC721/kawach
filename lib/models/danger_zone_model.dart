@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 enum DangerSeverity { low, medium, high, critical }
@@ -20,28 +19,29 @@ class DangerZoneModel {
     required this.lastUpdated,
   });
 
-  factory DangerZoneModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory DangerZoneModel.fromMap(Map<String, dynamic> data) {
     return DangerZoneModel(
-      zoneId: doc.id,
-      lat: (data['lat'] as num?)?.toDouble() ?? 0,
-      lng: (data['lng'] as num?)?.toDouble() ?? 0,
+      zoneId: (data['id'] ?? data['zoneId'] ?? data['zone_id'] ?? '').toString(),
+      lat: (data['latitude'] ?? data['lat'] ?? 0).toDouble(),
+      lng: (data['longitude'] ?? data['lng'] ?? 0).toDouble(),
       severity: DangerSeverity.values.firstWhere(
         (e) => e.name == (data['severity'] ?? 'low'),
         orElse: () => DangerSeverity.low,
       ),
-      reportCount: data['reportCount'] ?? 0,
-      lastUpdated:
-          (data['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      reportCount: data['report_count'] ?? data['reportCount'] ?? 0,
+      lastUpdated: (data['created_at'] ?? data['last_updated'] ?? data['lastUpdated']) != null
+          ? DateTime.parse(data['created_at'] ?? data['last_updated'] ?? data['lastUpdated'])
+          : DateTime.now(),
     );
   }
 
   Map<String, dynamic> toMap() => {
-        'lat': lat,
-        'lng': lng,
+        'id': zoneId,
+        'latitude': lat,
+        'longitude': lng,
         'severity': severity.name,
-        'reportCount': reportCount,
-        'lastUpdated': Timestamp.fromDate(lastUpdated),
+        'created_at': lastUpdated.toIso8601String(),
+        'description': 'Danger Zone',
       };
 
   Color get severityColor {

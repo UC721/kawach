@@ -1,15 +1,9 @@
-import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:http/http.dart' as http;
-
 import '../models/guardian_model.dart';
-import '../utils/constants.dart';
 
 class NotificationService extends ChangeNotifier {
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  // final FirebaseMessaging _fcm = FirebaseMessaging.instance; // REMOVED
   final FlutterLocalNotificationsPlugin _localNotifications =
   FlutterLocalNotificationsPlugin();
 
@@ -18,19 +12,11 @@ class NotificationService extends ChangeNotifier {
 
   Future<void> initialize() async {
     // Request notification permission
-    await _fcm.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-
-    // Get FCM Token
-    try {
-      _fcmToken = await _fcm.getToken();
-      notifyListeners();
-    } catch (e) {
-      debugPrint('FCM Token skipped: Real google-services.json missing ($e)');
-    }
+    // FCM setup removed
+    // In the future, request permissions via another provider (like OneSignal)
+    await Future.delayed(const Duration(milliseconds: 500));
+    _fcmToken = 'mock-token-for-supabase-migration';
+    notifyListeners();
 
     // Initialize local notifications (skip for Web)
     if (!kIsWeb) {
@@ -47,14 +33,7 @@ class NotificationService extends ChangeNotifier {
       await _localNotifications.initialize(settings: initSettings);
     }
 
-    // Background handler
-    FirebaseMessaging.onBackgroundMessage(
-        _firebaseMessagingBackgroundHandler);
-
-    // Foreground messages
-    FirebaseMessaging.onMessage.listen((message) {
-      _showLocalNotification(message);
-    });
+    // Removed FirebaseMessaging listeners
   }
 
   // ───────────────── Notify Guardians ─────────────────
@@ -63,7 +42,8 @@ class NotificationService extends ChangeNotifier {
     required List<GuardianModel> guardians,
     required String emergencyId,
     required String userId,
-    GeoPoint? location,
+    double? lat,
+    double? lng,
   }) async {
     for (final guardian in guardians) {
       if (guardian.fcmToken == null) continue;
@@ -77,8 +57,8 @@ class NotificationService extends ChangeNotifier {
           'emergencyId': emergencyId,
           'userId': userId,
           'type': 'emergency',
-          'lat': location?.latitude.toString() ?? '',
-          'lng': location?.longitude.toString() ?? '',
+          'lat': lat?.toString() ?? '',
+          'lng': lng?.toString() ?? '',
         },
       );
     }
@@ -90,24 +70,9 @@ class NotificationService extends ChangeNotifier {
     required String body,
     Map<String, String>? data,
   }) async {
-    try {
-      await http.post(
-        Uri.parse('https://fcm.googleapis.com/fcm/send'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'key=YOUR_SERVER_KEY',
-        },
-        body: jsonEncode({
-          'to': token,
-          'notification': {
-            'title': title,
-            'body': body,
-          },
-          'data': data ?? {},
-          'priority': 'high',
-        }),
-      );
-    } catch (_) {}
+    // FCM Http call removed. 
+    // Usually this is done server-side anyway.
+    debugPrint('Mock push notification sent to $token: $title / $body');
   }
 
   // ───────────────── Local Notification ─────────────────
@@ -147,30 +112,5 @@ class NotificationService extends ChangeNotifier {
     );
   }
 
-  void _showLocalNotification(RemoteMessage message) {
-    final notification = message.notification;
-
-    if (notification != null) {
-      showLocalNotification(
-        title: notification.title ?? 'KAWACH',
-        body: notification.body ?? '',
-      );
-    }
-  }
-
-  // ───────────────── Save Token ─────────────────
-
-  Future<void> saveFcmToken(String userId) async {
-    if (_fcmToken == null) return;
-    
-    // Simulate saving FCM token successfully
-    await Future.delayed(const Duration(milliseconds: 300));
-    debugPrint('Mocked saving FCM Token: $_fcmToken for User: $userId');
-  }
-}
-
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(
-    RemoteMessage message) async {
-  // Handle background notifications here
+  // _showLocalNotification(RemoteMessage message) removed
 }

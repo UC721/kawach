@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -7,7 +7,7 @@ import '../utils/constants.dart';
 
 /// Analyzes patterns to predict danger before user enters unsafe areas.
 class PredictiveDangerService extends ChangeNotifier {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final SupabaseClient _db = Supabase.instance.client;
 
   double _riskScore = 0.0;
   List<String> _riskFactors = [];
@@ -90,19 +90,18 @@ class PredictiveDangerService extends ChangeNotifier {
   Future<int> _getRecentReportsNear(double lat, double lng) async {
     try {
       final yesterday = DateTime.now().subtract(const Duration(hours: 24));
-      final snap = await _db
-          .collection(FSCollection.reports)
-          .where('createdAt',
-              isGreaterThan: Timestamp.fromDate(yesterday))
-          .get();
+      final res = await _db
+          .from(FSCollection.reports)
+          .select()
+          .gte('created_at', yesterday.toIso8601String());
 
       int count = 0;
-      for (final doc in snap.docs) {
-        final data = doc.data();
-        final GeoPoint? loc = data['location'] as GeoPoint?;
-        if (loc != null) {
+      for (final data in res as List<dynamic>) {
+        final double? rLat = data['latitude'] ?? data['lat'];
+        final double? rLng = data['longitude'] ?? data['lng'];
+        if (rLat != null && rLng != null) {
           final dist = Geolocator.distanceBetween(
-              lat, lng, loc.latitude, loc.longitude);
+              lat, lng, rLat, rLng);
           if (dist <= 1000) count++;
         }
       }

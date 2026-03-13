@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../services/location_service.dart';
+import '../services/route_safety_service.dart';
 import '../services/danger_zone_service.dart';
 import '../models/danger_zone_model.dart';
 import '../utils/constants.dart';
@@ -21,8 +23,16 @@ class _MapScreenState extends State<MapScreen> {
   Set<Circle> _dangerCircles = {};
   Set<Marker> _markers = {};
   LatLng? _userLocation;
+  LatLng? _destination;
+  Set<Polyline> _polylines = {};
   bool _isLoading = true;
   bool _inDanger = false;
+  bool _followUser = false;
+  bool _isCalculating = false;
+  CameraPosition? _currentCameraPosition;
+  bool _isCameraMoving = false;
+  final TextEditingController _searchCtrl = TextEditingController();
+  StreamSubscription<Position>? _positionSub;
 
   @override
   void initState() {
@@ -38,6 +48,7 @@ class _MapScreenState extends State<MapScreen> {
         _userLocation = LatLng(pos.latitude, pos.longitude);
         _isLoading = false;
       });
+      _startLocationListening();
       await _loadDangerZones(pos);
     } catch (e) {
       if (!mounted) return;
@@ -59,6 +70,74 @@ class _MapScreenState extends State<MapScreen> {
     if (!mounted) return;
     _buildHeatmap(dzService.dangerZones);
     final inDanger = await dzService.checkUserInDangerZone(pos);
+    if (!mounted) return;
+    setState(() => _inDanger = inDanger);
+  }
+
+  Future<void> _calculateSafePath() async {
+    if (_userLocation == null || _destination == null) return;
+    
+    setState(() => _isCalculating = true);
+    try {
+      final zones = context.read<DangerZoneService>().dangerZones;
+      final points = await context.read<RouteSafetyService>().calculateSafeRoute(
+        origin: _userLocation!,
+        destination: _destination!,
+        dangerZones: zones,
+      );
+
+      if (mounted) {
+        setState(() {
+          _isCalculating = false;
+          if (points.isNotEmpty) {
+            _polylines = {
+              Polyline(
+                polylineId: const PolylineId('safe_path'),
+                points: points,
+                color: AppColors.safe,
+                width: 6,
+              ),
+            };
+            _markers.add(Marker(
+              markerId: const MarkerId('destination'),
+              position: _destination!,
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+              infoWindow: const InfoWindow(title: 'Destination Set'),
+            ));
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No safe route found or API error occurring.')),
+            );
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isCalculating = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  void _startLocationListening() {
+    _positionSub = context.read<LocationService>().positionStream.listen((pos) {
+      if (!mounted) return;
+      setState(() {
+        _userLocation = LatLng(pos.latitude, pos.longitude);
+      });
+      if (_followUser) {
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(_userLocation!, 15),
+        );
+      }
+      _checkDanger(pos);
+    });
+  }
+
+  Future<void> _checkDanger(Position pos) async {
+    final inDanger = await context.read<DangerZoneService>().checkUserInDangerZone(pos);
     if (!mounted) return;
     setState(() => _inDanger = inDanger);
   }
@@ -122,9 +201,13 @@ class _MapScreenState extends State<MapScreen> {
         title: const Text('Safety Map'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.my_location),
+            icon: Icon(
+              _followUser ? Icons.gps_fixed : Icons.gps_not_fixed,
+              color: _followUser ? AppColors.primary : null,
+            ),
             onPressed: () {
-              if (_userLocation != null) {
+              setState(() => _followUser = !_followUser);
+              if (_followUser && _userLocation != null) {
                 _mapController?.animateCamera(
                   CameraUpdate.newLatLngZoom(_userLocation!, 15),
                 );
@@ -152,18 +235,102 @@ class _MapScreenState extends State<MapScreen> {
                     ? const Center(
                         child: Text('Unable to get location',
                             style: TextStyle(color: Colors.white)))
-                    : GoogleMap(
-                        initialCameraPosition: CameraPosition(
-                          target: _userLocation!,
-                          zoom: 14,
-                        ),
-                        myLocationEnabled: true,
-                        myLocationButtonEnabled: false,
-                        mapType: MapType.normal,
-                        circles: _dangerCircles,
-                        markers: _markers,
-                        onMapCreated: (c) => _mapController = c,
-                        style: _mapStyle, // dark map style
+                    : Stack(
+                        children: [
+                            GoogleMap(
+                              initialCameraPosition: CameraPosition(
+                                target: _userLocation!,
+                                zoom: 14,
+                              ),
+                              myLocationEnabled: true,
+                              myLocationButtonEnabled: false,
+                              mapType: MapType.normal,
+                              circles: _dangerCircles,
+                              markers: _markers,
+                              polylines: _polylines,
+                              onMapCreated: (c) => _mapController = c,
+                              onCameraMoveStarted: () => setState(() => _isCameraMoving = true),
+                              onCameraMove: (pos) => _currentCameraPosition = pos,
+                              onCameraIdle: () => setState(() => _isCameraMoving = false),
+                              onTap: (latLng) {
+                                setState(() {
+                                  _destination = latLng;
+                                  _searchCtrl.text = "Selected Location";
+                                });
+                                _calculateSafePath();
+                              },
+                              style: _mapStyle, // dark map style
+                            ),
+
+                            // Central Crosshair Pin (Uber-style)
+                            if (_destination == null)
+                              Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 35),
+                                  child: Icon(
+                                    Icons.location_on_rounded,
+                                    size: 44,
+                                    color: _isCameraMoving ? AppColors.primary.withOpacity(0.7) : AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            
+                            // Floating Search Bar & Status
+                            Positioned(
+                              top: 60,
+                              left: 20,
+                              right: 20,
+                              child: _buildSearchBar(),
+                            ),
+
+                            // Set Destination Button
+                            if (_destination == null && !_isCameraMoving)
+                              Positioned(
+                                bottom: 100,
+                                left: 50,
+                                right: 50,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    if (_currentCameraPosition != null) {
+                                      setState(() {
+                                        _destination = _currentCameraPosition!.target;
+                                        _searchCtrl.text = "Searching path...";
+                                      });
+                                      _calculateSafePath();
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                  ),
+                                  child: const Text('Set Destination Here', style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+
+                          // Calculation Overlay
+                          if (_isCalculating)
+                            const Center(
+                              child: Card(
+                                color: Colors.black87,
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.safe),
+                                      ),
+                                      SizedBox(width: 16),
+                                      Text('Calculating safest path...', style: TextStyle(color: Colors.white)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
           ),
           _buildLegend(),
@@ -175,6 +342,51 @@ class _MapScreenState extends State<MapScreen> {
             Navigator.pushNamed(context, AppRoutes.safeRouteMap),
         icon: const Icon(Icons.navigation_outlined),
         label: const Text('Safe Route'),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchCtrl,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: 'Move map or tap to set destination',
+          hintStyle: const TextStyle(color: Colors.white54, fontSize: 13),
+          prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+          suffixIcon: _destination != null 
+              ? IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white54),
+                  onPressed: () {
+                    setState(() {
+                      _destination = null;
+                      _polylines = {};
+                      _markers.removeWhere((m) => m.markerId.value == 'destination');
+                      _searchCtrl.clear();
+                    });
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+        ),
+        onSubmitted: (val) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Search integrated. Now tap on the map to finalize the exact spot!')),
+          );
+        },
       ),
     );
   }
@@ -201,6 +413,12 @@ class _MapScreenState extends State<MapScreen> {
 {"elementType":"labels.text.stroke","stylers":[{"color":"#212121"}]},
 {"featureType":"road","elementType":"geometry","stylers":[{"color":"#2c2c2c"}]},
 {"featureType":"water","elementType":"geometry","stylers":[{"color":"#000000"}]}]''';
+
+  @override
+  void dispose() {
+    _positionSub?.cancel();
+    super.dispose();
+  }
 }
 
 class _LegendItem extends StatelessWidget {

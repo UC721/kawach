@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -6,7 +6,7 @@ import '../models/danger_zone_model.dart';
 import '../utils/constants.dart';
 
 class DangerZoneService extends ChangeNotifier {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final SupabaseClient _db = Supabase.instance.client;
 
   List<DangerZoneModel> _dangerZones = [];
   List<DangerZoneModel> get dangerZones => _dangerZones;
@@ -18,20 +18,20 @@ class DangerZoneService extends ChangeNotifier {
 
   // ── Load all danger zones ────────────────────────────────────
   Future<void> loadDangerZones() async {
-    final snap = await _db.collection(FSCollection.dangerZones).get();
+    final res = await _db.from(FSCollection.dangerZones).select();
     _dangerZones =
-        snap.docs.map((d) => DangerZoneModel.fromFirestore(d)).toList();
+        (res as List).map((d) => DangerZoneModel.fromMap(d)).toList();
     notifyListeners();
   }
 
   // ── Real-time stream ─────────────────────────────────────────
   Stream<List<DangerZoneModel>> streamDangerZones() {
     return _db
-        .collection(FSCollection.dangerZones)
-        .snapshots()
-        .map((snap) {
+        .from(FSCollection.dangerZones)
+        .stream(primaryKey: ['id'])
+        .map((docs) {
       _dangerZones =
-          snap.docs.map((d) => DangerZoneModel.fromFirestore(d)).toList();
+          docs.map((d) => DangerZoneModel.fromMap(d)).toList();
       notifyListeners();
       return _dangerZones;
     });
@@ -63,28 +63,30 @@ class DangerZoneService extends ChangeNotifier {
 
   // ── Aggregate & create danger zone from reports ──────────────
   Future<void> aggregateFromReports() async {
-    final reportsSnap = await _db.collection(FSCollection.reports).get();
-    final Map<String, List<GeoPoint>> clusters = {};
+    final res = await _db.from(FSCollection.reports).select();
+    final Map<String, List<Map<String, double>>> clusters = {};
 
-    for (final doc in reportsSnap.docs) {
-      final data = doc.data();
-      final GeoPoint? loc = data['location'] as GeoPoint?;
-      if (loc == null) continue;
+    for (final data in res as List<dynamic>) {
+      final double? lat = data['latitude'] ?? data['lat'];
+      final double? lng = data['longitude'] ?? data['lng'];
+      if (lat == null || lng == null) continue;
 
       // Simple grid-based clustering (0.005° ≈ ~500m)
       final key =
-          '${(loc.latitude / 0.005).round()}_${(loc.longitude / 0.005).round()}';
-      clusters.putIfAbsent(key, () => []).add(loc);
+          '${(lat / 0.005).round()}_${(lng / 0.005).round()}';
+      clusters.putIfAbsent(key, () => []).add({'lat': lat, 'lng': lng});
     }
 
     // Write aggregated danger zones
-    final batch = _db.batch();
+    // In Supabase, batching is done by inserting/upserting a list.
+    final List<Map<String, dynamic>> updates = [];
+    
     for (final entry in clusters.entries) {
       final points = entry.value;
       final avgLat =
-          points.map((p) => p.latitude).reduce((a, b) => a + b) / points.length;
+          points.map((p) => p['lat']!).reduce((a, b) => a + b) / points.length;
       final avgLng =
-          points.map((p) => p.longitude).reduce((a, b) => a + b) /
+          points.map((p) => p['lng']!).reduce((a, b) => a + b) /
               points.length;
 
       DangerSeverity severity;
@@ -98,16 +100,18 @@ class DangerZoneService extends ChangeNotifier {
         severity = DangerSeverity.low;
       }
 
-      final ref = _db.collection(FSCollection.dangerZones).doc(entry.key);
-      batch.set(ref, {
-        'lat': avgLat,
-        'lng': avgLng,
+      updates.add({
+        'id': entry.key,
+        'latitude': avgLat,
+        'longitude': avgLng,
         'severity': severity.name,
-        'reportCount': points.length,
-        'lastUpdated': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+        'created_at': DateTime.now().toIso8601String(),
+        'description': 'Aggregated Danger Zone',
+      });
     }
-    await batch.commit();
+    if (updates.isNotEmpty) {
+      await _db.from(FSCollection.dangerZones).upsert(updates);
+    }
     await loadDangerZones();
   }
 

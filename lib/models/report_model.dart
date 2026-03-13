@@ -1,11 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ReportModel {
   final String reportId;
   final String userId;
   final String description;
   final String? imageUrl;
-  final GeoPoint? location;
+  final double? lat;
+  final double? lng;
   final String? address;
   final DateTime createdAt;
   final int upvotes;
@@ -15,33 +15,37 @@ class ReportModel {
     required this.userId,
     required this.description,
     this.imageUrl,
-    this.location,
+    this.lat,
+    this.lng,
     this.address,
     required this.createdAt,
     this.upvotes = 0,
   });
 
-  factory ReportModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory ReportModel.fromMap(Map<String, dynamic> data) {
     return ReportModel(
-      reportId: doc.id,
-      userId: data['userId'] ?? '',
+      reportId: (data['id'] ?? data['reportId'] ?? data['report_id'] ?? '').toString(),
+      userId: (data['userId'] ?? data['user_id'] ?? '').toString(),
       description: data['description'] ?? '',
-      imageUrl: data['imageUrl'],
-      location: data['location'] as GeoPoint?,
-      address: data['address'],
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      imageUrl: data['image_url'] ?? data['imageUrl'],
+      lat: (data['latitude'] ?? data['lat'])?.toDouble(),
+      lng: (data['longitude'] ?? data['lng'])?.toDouble(),
+      address: data['address'] ?? data['location'],
+      createdAt: (data['created_at'] ?? data['createdAt']) != null 
+          ? DateTime.parse(data['created_at'] ?? data['createdAt']) 
+          : DateTime.now(),
       upvotes: data['upvotes'] ?? 0,
     );
   }
 
   Map<String, dynamic> toMap() => {
-        'userId': userId,
+        // userId is missing in user's SQL, but kept for model consistency
         'description': description,
-        'imageUrl': imageUrl,
-        'location': location,
+        'image_url': imageUrl,
+        'latitude': lat,
+        'longitude': lng,
+        'location': address,
         'address': address,
-        'createdAt': Timestamp.fromDate(createdAt),
-        'upvotes': upvotes,
+        'created_at': createdAt.toIso8601String(),
       };
 }

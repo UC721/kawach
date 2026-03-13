@@ -1,12 +1,12 @@
 import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
 class AudioService extends ChangeNotifier {
   final AudioRecorder _recorder = AudioRecorder();
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final SupabaseStorageClient _storage = Supabase.instance.client.storage;
 
   bool _isRecording = false;
   String? _currentPath;
@@ -63,10 +63,16 @@ class AudioService extends ChangeNotifier {
   }) async {
     try {
       final file = File(filePath);
-      final ref = _storage.ref(
-          'evidence/$userId/$emergencyId/audio_${DateTime.now().millisecondsSinceEpoch}.m4a');
-      final task = await ref.putFile(file);
-      return await task.ref.getDownloadURL();
+      final fileName = 'audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      final path = 'evidence/$userId/$emergencyId/$fileName';
+      
+      await _storage.from('evidence_bucket').upload(
+        path,
+        file,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+      );
+      
+      return _storage.from('evidence_bucket').getPublicUrl(path);
     } catch (_) {
       return null;
     }

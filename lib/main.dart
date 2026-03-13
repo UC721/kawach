@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
-import 'firebase_options.dart';
+import 'config/env_config.dart';
 import 'services/auth_service.dart';
 import 'services/location_service.dart';
 import 'services/emergency_service.dart';
@@ -41,10 +41,9 @@ Future<void> main() async {
     ),
   );
 
-  // Initialize Firebase using our mock options to prevent Android native crashes
-  // when google-services.json is missing during early dev.
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
+  await Supabase.initialize(
+    url: EnvConfig.supabaseUrl,
+    anonKey: EnvConfig.supabaseAnonKey,
   );
 
   runApp(

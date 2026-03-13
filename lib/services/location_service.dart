@@ -1,17 +1,17 @@
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../utils/constants.dart';
 
 class LocationService extends ChangeNotifier {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final SupabaseClient _db = Supabase.instance.client;
 
   Position? _currentPosition;
   StreamSubscription<Position>? _positionStream;
   Timer? _uploadTimer;
-  String? _trackedUserId;
+
   bool _isTracking = false;
 
   Position? get currentPosition => _currentPosition;
@@ -33,7 +33,6 @@ class LocationService extends ChangeNotifier {
   // ── Start live tracking ──────────────────────────────────────
   Future<void> startTracking(String userId, String emergencyId) async {
     await _ensurePermission();
-    _trackedUserId = userId;
     _isTracking = true;
 
     _positionStream = Geolocator.getPositionStream(
@@ -53,19 +52,19 @@ class LocationService extends ChangeNotifier {
 
   Future<void> _uploadLocation(
       String userId, String emergencyId, Position pos) async {
-    final geoPoint = GeoPoint(pos.latitude, pos.longitude);
-
     // Update emergency document
-    await _db.collection(FSCollection.emergencies).doc(emergencyId).update({
-      'location': geoPoint,
-      'locationUpdatedAt': FieldValue.serverTimestamp(),
-    });
+    await _db.from(FSCollection.emergencies).update({
+      'lat': pos.latitude,
+      'lng': pos.longitude,
+      'locationUpdatedAt': DateTime.now().toIso8601String(),
+    }).eq('emergencyId', emergencyId);
 
     // Update user's live location
-    await _db.collection(FSCollection.users).doc(userId).update({
-      'liveLocation': geoPoint,
-      'liveLocationUpdatedAt': FieldValue.serverTimestamp(),
-    });
+    await _db.from(FSCollection.users).update({
+      'liveLat': pos.latitude,
+      'liveLng': pos.longitude,
+      'liveLocationUpdatedAt': DateTime.now().toIso8601String(),
+    }).eq('userId', userId);
   }
 
   // ── Stop tracking ────────────────────────────────────────────
@@ -74,7 +73,6 @@ class LocationService extends ChangeNotifier {
     _positionStream = null;
     _uploadTimer?.cancel();
     _isTracking = false;
-    _trackedUserId = null;
     notifyListeners();
   }
 
@@ -87,12 +85,20 @@ class LocationService extends ChangeNotifier {
       );
 
   // ── Guard live location in Firestore ─────────────────────────
-  Stream<GeoPoint?> streamUserLocation(String userId) {
+  Stream<Map<String, double>?> streamUserLocation(String userId) {
     return _db
-        .collection(FSCollection.users)
-        .doc(userId)
-        .snapshots()
-        .map((doc) => doc.data()?['liveLocation'] as GeoPoint?);
+        .from(FSCollection.users)
+        .stream(primaryKey: ['userId'])
+        .eq('userId', userId)
+        .map((docs) {
+          if (docs.isEmpty) return null;
+          final doc = docs.first;
+          if (doc['liveLat'] == null || doc['liveLng'] == null) return null;
+          return {
+            'lat': (doc['liveLat'] as num).toDouble(),
+            'lng': (doc['liveLng'] as num).toDouble(),
+          };
+        });
   }
 
   // ── Permission ───────────────────────────────────────────────

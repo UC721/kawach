@@ -64,7 +64,7 @@ class AppStrings {
 // AppKeys – Placeholder API Keys (replace before production)
 // ============================================================
 class AppKeys {
-  static const googleMapsApiKey  = 'YOUR_GOOGLE_MAPS_API_KEY';
+  static const googleMapsApiKey  = 'AIzaSyBCADPPcrSqeHA1jycqDJZejrpGTDgol3w';
   static const smsGatewayUrl     = 'https://api.example.com/sms';
   static const smsGatewayApiKey  = 'YOUR_SMS_GATEWAY_API_KEY';
   static const streamingServerUrl = 'https://stream.example.com/live';
@@ -93,8 +93,9 @@ class FSCollection {
   static const guardians      = 'guardians';
   static const emergencies    = 'emergencies';
   static const reports        = 'reports';
-  static const dangerZones    = 'dangerZones';
-  static const guardianNetwork= 'guardianNetwork';
-  static const evidenceVault  = 'evidenceVault';
-  static const activityLogs   = 'activityLogs';
+  static const dangerZones    = 'dangerzone';
+  static const guardianNetwork= 'guardian_network';
+  static const evidenceVault  = 'evidence_vault';
+  static const activityLogs   = 'activity_logs';
+  static const volunteerAlerts = 'volunteer_alerts';
 }

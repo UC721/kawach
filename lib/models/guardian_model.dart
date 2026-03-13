@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class GuardianModel {
   final String guardianId;
@@ -17,10 +16,9 @@ class GuardianModel {
     this.fcmToken,
   });
 
-  factory GuardianModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory GuardianModel.fromMap(Map<String, dynamic> data) {
     return GuardianModel(
-      guardianId: doc.id,
+      guardianId: data['guardianId'] ?? '',
       userId: data['userId'] ?? '',
       name: data['name'] ?? '',
       phone: data['phone'] ?? '',

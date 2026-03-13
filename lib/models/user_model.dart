@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'emergency_profile_model.dart';
 
 class UserModel {
@@ -20,19 +19,20 @@ class UserModel {
     required this.createdAt,
   });
 
-  factory UserModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory UserModel.fromMap(Map<String, dynamic> data) {
     return UserModel(
-      userId: doc.id,
+      userId: data['userId'] ?? data['user_id'] ?? '',
       name: data['name'] ?? '',
       phone: data['phone'] ?? '',
       email: data['email'],
       guardianIds: List<String>.from(data['guardians'] ?? []),
-      emergencyProfile: data['emergencyProfile'] != null
+      emergencyProfile: (data['emergencyProfile'] ?? data['emergency_profile']) != null
           ? EmergencyProfileModel.fromMap(
-              data['emergencyProfile'] as Map<String, dynamic>)
+              (data['emergencyProfile'] ?? data['emergency_profile']) as Map<String, dynamic>)
           : null,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: (data['createdAt'] ?? data['created_at']) != null
+          ? DateTime.parse(data['createdAt'] ?? data['created_at'])
+          : DateTime.now(),
     );
   }
 
@@ -41,8 +41,8 @@ class UserModel {
         'phone': phone,
         'email': email,
         'guardians': guardianIds,
-        'emergencyProfile': emergencyProfile?.toMap(),
-        'createdAt': Timestamp.fromDate(createdAt),
+        'emergency_profile': emergencyProfile?.toMap(),
+        'created_at': createdAt.toIso8601String(),
       };
 
   UserModel copyWith({
