@@ -65,17 +65,17 @@ class EmergencyModel {
   }
 
   Map<String, dynamic> toMap() => {
-        'emergency_id': emergencyId,
-        'user_id': userId,
+        'emergencyId': emergencyId,
+        'userId': userId,
         'status': status.name,
-        'triggered_by': triggeredBy.name,
+        'triggeredBy': triggeredBy.name,
         'lat': lat,
         'lng': lng,
-        'audio_url': audioUrl,
-        'video_url': videoUrl,
-        'livestream_url': livestreamUrl,
-        'created_at': createdAt.toIso8601String(),
-        'resolved_at': resolvedAt?.toIso8601String(),
+        'audioUrl': audioUrl,
+        'videoUrl': videoUrl,
+        'livestreamUrl': livestreamUrl,
+        'createdAt': createdAt.toIso8601String(),
+        'resolvedAt': resolvedAt?.toIso8601String(),
       };
 
   EmergencyModel copyWith({
