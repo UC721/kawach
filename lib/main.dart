@@ -23,6 +23,9 @@ import 'services/fake_call_service.dart';
 import 'services/route_safety_service.dart';
 import 'services/live_stream_service.dart';
 import 'services/user_service.dart';
+import 'services/background/background_service.dart';
+import 'services/background/background_task_manager.dart';
+import 'services/background/service_lifecycle_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +49,16 @@ Future<void> main() async {
     anonKey: EnvConfig.supabaseAnonKey,
   );
 
+  // Initialize background service components
+  final backgroundService = BackgroundService();
+  final taskManager = BackgroundTaskManager();
+  final lifecycleManager = ServiceLifecycleManager(
+    backgroundService: backgroundService,
+    taskManager: taskManager,
+  );
+  await backgroundService.initialize();
+  lifecycleManager.initialize();
+
   runApp(
     MultiProvider(
       providers: [
@@ -67,6 +80,9 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => FakeCallService()),
         ChangeNotifierProvider(create: (_) => RouteSafetyService()),
         ChangeNotifierProvider(create: (_) => LiveStreamService()),
+        ChangeNotifierProvider.value(value: backgroundService),
+        ChangeNotifierProvider.value(value: taskManager),
+        ChangeNotifierProvider.value(value: lifecycleManager),
       ],
       child: const KawachApp(),
     ),
