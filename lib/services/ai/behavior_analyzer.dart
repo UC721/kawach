@@ -1,9 +1,9 @@
 import '../../models/ai_prediction_model.dart';
 
-/// Analyses user behavioral patterns over time.
+/// Analyzes user behavioral patterns over time.
 ///
 /// Tracks location history, motion cadence, and interaction patterns
-/// to detect deviations from normal behaviour that may indicate a
+/// to detect deviations from normal behavior that may indicate a
 /// safety concern (e.g. user suddenly stationary in an unusual area,
 /// or moving erratically late at night).
 class BehaviorAnalyzer {
@@ -30,7 +30,7 @@ class BehaviorAnalyzer {
     }
   }
 
-  /// Analyse current behaviour and return a prediction.
+  /// Analyze current behavior and return a prediction.
   AIPrediction analyze({
     required int currentHour,
     bool isInDangerZone = false,

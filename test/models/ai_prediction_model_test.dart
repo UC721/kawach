@@ -31,7 +31,7 @@ void main() {
           isTrue);
     });
 
-    test('serialises to and from map', () {
+    test('serializes to and from map', () {
       final original = AIPrediction(
         module: 'threat',
         label: 'CRITICAL',

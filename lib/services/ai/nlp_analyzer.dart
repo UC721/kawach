@@ -5,7 +5,7 @@ import '../../models/ai_prediction_model.dart';
 /// Performs panic phrase detection with confidence scoring, sentiment
 /// intensity estimation, and multi-language keyword matching.
 class NlpAnalyzer {
-  /// Weighted panic keywords.  Higher weight = stronger panic indicator.
+  /// Weighted panic keywords. Higher weight = stronger panic indicator.
   static const Map<String, double> _panicKeywords = {
     // English
     'help': 0.8,
@@ -24,7 +24,7 @@ class NlpAnalyzer {
     'follow': 0.4,
     'scared': 0.6,
     'threatening': 0.7,
-    // Hindi / Urdu
+    // Hindi/Urdu
     'bachao': 1.0,
     'chhodo': 0.9,
     'madad': 0.95,
