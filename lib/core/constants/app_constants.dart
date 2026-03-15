@@ -11,9 +11,11 @@ class AppConstants {
   static const int meshTtlHops = 7;
   static const Duration meshMessageTtl = Duration(hours: 24);
   static const int meshBloomFilterSize = 10000;
-  static const String meshServiceUuid = '00001800-0000-1000-8000-00805f9b34fb';
+  // Custom 128-bit UUIDs for BLE mesh GATT service/characteristic.
+  static const String meshServiceUuid =
+      '12345678-1234-5678-1234-56789abcdef0';
   static const String meshCharacteristicUuid =
-      '00002a00-0000-1000-8000-00805f9b34fb';
+      '12345678-1234-5678-1234-56789abcdef1';
 
   // Evidence
   static const int evidenceSignedUrlMinutes = 15;
