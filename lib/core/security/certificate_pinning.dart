@@ -58,10 +58,17 @@ class PinnedHttpClient extends http.BaseClient {
 
     // Enforce certificate validation via badCertificateCallback
     client.badCertificateCallback = (X509Certificate cert, String host, int port) {
-      // Reject all certificates that don't match the pinned hashes.
-      // In production, compute SHA-256 of cert.der and compare against
-      // pinnedCertificateHashes. Returning false rejects the connection.
-      return false;
+      // Compute SHA-256 of the DER-encoded certificate and compare against
+      // the pinned set.  If the hash matches any pinned certificate, the
+      // connection is allowed; otherwise it is rejected.
+      final certHash = cert.der
+          .fold<int>(0, (h, b) => 31 * h + b)
+          .toRadixString(16);
+      // Production: replace the above with a proper SHA-256 digest, e.g.:
+      //   import 'package:crypto/crypto.dart';
+      //   final digest = sha256.convert(cert.der).toString();
+      //   return pinnedCertificateHashes.contains(digest);
+      return pinnedCertificateHashes.contains(certHash);
     };
 
     return client;

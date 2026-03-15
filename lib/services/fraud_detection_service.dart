@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -111,7 +113,8 @@ class FraudDetectionService extends ChangeNotifier {
       // Rough distance in km (Euclidean approximation for nearby points)
       final dLat = (lat - lastLat) * 111.0;
       final dLng = (lng - lastLng) * 111.0 * 0.7; // rough cos(lat) factor
-      final distKm = (dLat * dLat + dLng * dLng);
+      final distKmSq = dLat * dLat + dLng * dLng;
+      final distKm = distKmSq > 0 ? sqrt(distKmSq) : 0.0;
 
       final elapsedHours =
           DateTime.now().difference(lastTime).inMinutes / 60.0;

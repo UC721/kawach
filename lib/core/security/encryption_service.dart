@@ -172,6 +172,10 @@ class EncryptionService {
     Signature signature,
     SimplePublicKey publicKey,
   ) async {
-    return _ed25519.verify(data, signature: signature);
+    final keyedSignature = Signature(
+      signature.bytes,
+      publicKey: publicKey,
+    );
+    return _ed25519.verify(data, signature: keyedSignature);
   }
 }
