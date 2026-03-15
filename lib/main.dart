@@ -23,6 +23,10 @@ import 'services/fake_call_service.dart';
 import 'services/route_safety_service.dart';
 import 'services/live_stream_service.dart';
 import 'services/user_service.dart';
+import 'services/scalability/connection_pool_manager.dart';
+import 'services/scalability/cache_service.dart';
+import 'services/scalability/batch_processor.dart';
+import 'services/scalability/realtime_channel_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,6 +71,11 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => FakeCallService()),
         ChangeNotifierProvider(create: (_) => RouteSafetyService()),
         ChangeNotifierProvider(create: (_) => LiveStreamService()),
+        // ── Scalability services ──────────────────────────────
+        ChangeNotifierProvider(create: (_) => ConnectionPoolManager()),
+        ChangeNotifierProvider(create: (_) => CacheService()),
+        ChangeNotifierProvider(create: (_) => BatchProcessor()),
+        ChangeNotifierProvider(create: (_) => RealtimeChannelManager()),
       ],
       child: const KawachApp(),
     ),
