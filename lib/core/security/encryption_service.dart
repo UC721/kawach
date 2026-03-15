@@ -45,7 +45,7 @@ class EncryptionService {
 
   /// Convenience: encrypt a UTF-8 string and return Base64.
   String encryptString(String plaintext, Uint8List key) {
-    final encrypted = encrypt(utf8.encode(plaintext) as Uint8List, key);
+    final encrypted = encrypt(Uint8List.fromList(utf8.encode(plaintext)), key);
     return base64Encode(encrypted);
   }
 
