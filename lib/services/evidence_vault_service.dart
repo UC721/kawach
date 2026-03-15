@@ -40,9 +40,9 @@ class EvidenceVaultService extends ChangeNotifier {
     final res = await _db
         .from(FSCollection.evidenceVault)
         .select()
-        .eq('userId', userId)
-        .eq('emergencyId', emergencyId)
-        .order('timestamp', ascending: true);
+        .eq('user_id', userId)
+        .eq('sos_alert_id', emergencyId)
+        .order('created_at', ascending: true);
     return (res as List).map((d) => EvidenceModel.fromMap(d)).toList();
   }
 
@@ -52,11 +52,11 @@ class EvidenceVaultService extends ChangeNotifier {
   }) {
     return _db
         .from(FSCollection.evidenceVault)
-        .stream(primaryKey: ['evidenceId'])
-        .eq('userId', userId)
+        .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
         .map((docs) {
-          final filtered = docs.where((d) => d['emergencyId'] == emergencyId).toList();
-          filtered.sort((a, b) => (a['timestamp'] as String).compareTo(b['timestamp'] as String));
+          final filtered = docs.where((d) => d['sos_alert_id'] == emergencyId).toList();
+          filtered.sort((a, b) => (a['created_at'] as String).compareTo(b['created_at'] as String));
           return filtered.map((d) => EvidenceModel.fromMap(d)).toList();
         });
   }

@@ -40,7 +40,7 @@ class EmergencyModel {
 
   factory EmergencyModel.fromMap(Map<String, dynamic> data) {
     return EmergencyModel(
-      emergencyId: data['emergencyId'] ?? data['emergency_id'] ?? '',
+      emergencyId: data['id'] ?? data['emergencyId'] ?? data['emergency_id'] ?? '',
       userId: data['userId'] ?? data['user_id'] ?? '',
       status: EmergencyStatus.values.firstWhere(
         (e) => e.name == data['status'],
@@ -65,7 +65,6 @@ class EmergencyModel {
   }
 
   Map<String, dynamic> toMap() => {
-        'emergency_id': emergencyId,
         'user_id': userId,
         'status': status.name,
         'triggered_by': triggeredBy.name,

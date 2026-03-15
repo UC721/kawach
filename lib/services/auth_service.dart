@@ -74,23 +74,22 @@ class AuthService extends ChangeNotifier {
     await _auth.signOut();
   }
 
-  // Simplified phone auth for demo
-  Future<void> verifyPhoneNumber({
-    required String phoneNumber,
-    required void Function(dynamic) onVerified,
-    required void Function(Exception) onFailed,
-    required void Function(String, int?) onCodeSent,
-  }) async {
-    await Future.delayed(const Duration(seconds: 1));
-    onCodeSent('mock_verification_id', null);
+  // ── Phone OTP authentication (Supabase native) ───────────
+  /// Sends an OTP to [phoneNumber] via Supabase Auth (POST /auth/v1/token).
+  Future<void> sendPhoneOtp({required String phoneNumber}) async {
+    await _auth.signInWithOtp(phone: phoneNumber);
   }
 
-  Future<String?> signInWithPhoneCredential(dynamic credential) async {
+  /// Verifies the OTP received on [phoneNumber].
+  Future<String?> verifyPhoneOtp({
+    required String phoneNumber,
+    required String otp,
+  }) async {
     try {
       final AuthResponse res = await _auth.verifyOTP(
         type: OtpType.sms,
-        token: credential.toString(),
-        phone: 'phone_number_from_elsewhere', // Simplified for demo, needs proper handling
+        phone: phoneNumber,
+        token: otp,
       );
       if (res.user != null) {
         await _setAuthState(true);
@@ -100,5 +99,32 @@ class AuthService extends ChangeNotifier {
     } catch (e) {
       throw e.toString();
     }
+  }
+
+  // Legacy helpers kept for backward compatibility
+  Future<void> verifyPhoneNumber({
+    required String phoneNumber,
+    required void Function(dynamic) onVerified,
+    required void Function(Exception) onFailed,
+    required void Function(String, int?) onCodeSent,
+  }) async {
+    try {
+      await sendPhoneOtp(phoneNumber: phoneNumber);
+      onCodeSent(phoneNumber, null);
+    } catch (e) {
+      onFailed(Exception(e.toString()));
+    }
+  }
+
+  Future<String?> signInWithPhoneCredential(dynamic credential) async {
+    // credential is expected to be a Map with 'phone' and 'otp' keys,
+    // or a plain OTP string (legacy behavior).
+    if (credential is Map) {
+      return verifyPhoneOtp(
+        phoneNumber: credential['phone'] as String,
+        otp: credential['otp'] as String,
+      );
+    }
+    throw 'signInWithPhoneCredential requires a Map with phone and otp keys';
   }
 }
