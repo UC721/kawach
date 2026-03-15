@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/ring_coordinator.dart';
 import '../services/emergency_service.dart';
 import '../services/location_service.dart';
 import '../services/audio_service.dart';
@@ -12,6 +13,7 @@ import '../services/sms_service.dart';
 import '../services/live_stream_service.dart';
 import '../services/user_service.dart';
 import '../services/offline_emergency_service.dart';
+import '../services/guardian_network_service.dart';
 import '../models/emergency_model.dart';
 import '../utils/constants.dart';
 
@@ -83,6 +85,8 @@ class _SosScreenState extends State<SosScreen>
       streamService: context.read<LiveStreamService>(),
       userService: context.read<UserService>(),
       offlineService: context.read<OfflineEmergencyService>(),
+      ringCoordinator: context.read<RingCoordinator>(),
+      guardianNetworkService: context.read<GuardianNetworkService>(),
     );
 
     if (mounted) {

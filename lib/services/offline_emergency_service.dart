@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import '../models/emergency_model.dart';
 
@@ -9,6 +11,8 @@ class OfflineEmergencyService extends ChangeNotifier {
 
   // ── Mock in-memory persistence ───────────────────────────────
   final List<String> _mockPrefs = [];
+
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
 
   Future<void> saveEmergencyLocally(EmergencyModel emergency) async {
     _mockPrefs.add(jsonEncode(emergency.toMap()
@@ -33,10 +37,23 @@ class OfflineEmergencyService extends ChangeNotifier {
 
   // ── Listen to connectivity changes ───────────────────────────
   void listenForConnectivity() {
-    // Mock listener
+    _connectivitySub = Connectivity()
+        .onConnectivityChanged
+        .listen((results) async {
+      final hasNetwork = results.any((r) => r != ConnectivityResult.none);
+      if (hasNetwork) {
+        await syncPendingEmergencies();
+      }
+    });
   }
 
   Future<int> pendingCount() async {
     return _mockPrefs.length;
+  }
+
+  @override
+  void dispose() {
+    _connectivitySub?.cancel();
+    super.dispose();
   }
 }

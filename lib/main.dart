@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'config/env_config.dart';
+import 'core/connectivity_monitor.dart';
+import 'core/ring_coordinator.dart';
 import 'services/auth_service.dart';
 import 'services/location_service.dart';
 import 'services/emergency_service.dart';
@@ -46,9 +48,22 @@ Future<void> main() async {
     anonKey: EnvConfig.supabaseAnonKey,
   );
 
+  // ── Ring architecture: Edge → Mesh → Cloud ──────────────────
+  final connectivityMonitor = ConnectivityMonitor();
+  await connectivityMonitor.start();
+
+  final ringCoordinator = RingCoordinator(
+    connectivity: connectivityMonitor,
+  );
+
   runApp(
     MultiProvider(
       providers: [
+        // Ring architecture
+        ChangeNotifierProvider.value(value: connectivityMonitor),
+        ChangeNotifierProvider.value(value: ringCoordinator),
+
+        // Application services
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => UserService()),
         ChangeNotifierProvider(create: (_) => LocationService()),

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
 
+import '../core/ring_coordinator.dart';
 import '../models/emergency_model.dart';
 import '../utils/constants.dart';
 import 'location_service.dart';
@@ -15,8 +16,16 @@ import 'sms_service.dart';
 import 'live_stream_service.dart';
 import 'user_service.dart';
 import 'offline_emergency_service.dart';
+import 'guardian_network_service.dart';
 
 /// Central emergency pipeline – all SOS triggers call [triggerEmergency].
+///
+/// Uses [RingCoordinator] to determine which rings are available and
+/// executes the appropriate actions on each ring:
+///
+/// • **Edge** (always): GPS, audio/video recording, local cache
+/// • **Mesh** (when available): SMS alerts, guardian network relay
+/// • **Cloud** (when available): Supabase persist, push notifications, live stream
 class EmergencyService extends ChangeNotifier {
   final SupabaseClient _db = Supabase.instance.client;
   final _uuid = const Uuid();
@@ -41,6 +50,8 @@ class EmergencyService extends ChangeNotifier {
     required LiveStreamService streamService,
     required UserService userService,
     required OfflineEmergencyService offlineService,
+    RingCoordinator? ringCoordinator,
+    GuardianNetworkService? guardianNetworkService,
   }) async {
     if (_isActive) return; // Prevent duplicate triggers
     _isActive = true;
@@ -50,16 +61,21 @@ class EmergencyService extends ChangeNotifier {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return;
 
+    // ── EDGE RING (always available) ─────────────────────────
     // 1. Get current location
     Position? pos;
-    try {
-      pos = await locationService.getCurrentPosition();
-    } catch (_) {}
+    if (ringCoordinator != null) {
+      pos = await ringCoordinator.edgeRing.captureLocation(locationService);
+    } else {
+      try {
+        pos = await locationService.getCurrentPosition();
+      } catch (_) {}
+    }
 
     final lat = pos?.latitude;
     final lng = pos?.longitude;
 
-    // 2. Create emergency document in Firestore
+    // 2. Create emergency document
     final emergencyId = _uuid.v4();
     final emergency = EmergencyModel(
       emergencyId: emergencyId,
@@ -71,51 +87,111 @@ class EmergencyService extends ChangeNotifier {
       createdAt: DateTime.now(),
     );
 
-    try {
-      await _db
-          .from(FSCollection.emergencies)
-          .insert(emergency.toMap());
-    } catch (e) {
-      // Offline fallback – store locally
-      await offlineService.saveEmergencyLocally(emergency);
+    // 3. Persist: Cloud ring first, fall back to Edge local cache
+    if (ringCoordinator != null && ringCoordinator.isCloudAvailable) {
+      final persisted =
+          await ringCoordinator.cloudRing.persistEmergency(emergency);
+      if (!persisted) {
+        await ringCoordinator.edgeRing.cacheLocally(offlineService, emergency);
+      }
+    } else if (ringCoordinator != null) {
+      // Cloud unavailable – cache locally via Edge ring
+      await ringCoordinator.edgeRing.cacheLocally(offlineService, emergency);
+    } else {
+      // Legacy path (no coordinator)
+      try {
+        await _db.from(FSCollection.emergencies).insert(emergency.toMap());
+      } catch (e) {
+        await offlineService.saveEmergencyLocally(emergency);
+      }
     }
 
     _activeEmergency = emergency;
     notifyListeners();
 
-    // 3. Start live GPS tracking
-    unawaited(locationService.startTracking(userId, emergencyId));
+    // 4. Start live GPS tracking (Edge)
+    if (ringCoordinator != null) {
+      ringCoordinator.edgeRing
+          .startTracking(locationService, userId, emergencyId);
+    } else {
+      unawaited(locationService.startTracking(userId, emergencyId));
+    }
 
-    // 4. Start audio recording & upload
+    // 5. Start audio recording & upload (Edge + Cloud)
     unawaited(_startAudioEvidence(
         audioService, vaultService, userId, emergencyId));
 
-    // 5. Start camera evidence capture
+    // 6. Start camera evidence capture (Edge + Cloud)
     unawaited(_startVideoEvidence(
         cameraService, vaultService, userId, emergencyId));
 
-    // 6. Start live video stream
-    unawaited(streamService.startStream(userId, emergencyId));
-
-    // 7. Send push notifications to guardians
+    // ── CLOUD RING ───────────────────────────────────────────
     final guardians = await userService.getGuardians(userId);
-    unawaited(notificationService.notifyGuardians(
-      guardians: guardians,
-      emergencyId: emergencyId,
-      userId: userId,
-      lat: lat,
-      lng: lng,
-    ));
 
-    // 8. SMS backup
-    unawaited(smsService.sendEmergencySms(
-      guardians: guardians,
-      lat: lat,
-      lng: lng,
-      userName: userService.currentUserModel?.name ?? 'User',
-    ));
+    if (ringCoordinator != null && ringCoordinator.isCloudAvailable) {
+      // 7. Start live video stream
+      unawaited(ringCoordinator.cloudRing.startLiveStream(
+        streamService: streamService,
+        userId: userId,
+        emergencyId: emergencyId,
+      ));
 
-    // 9. Auto-activate stealth mode after 5s
+      // 8. Send push notifications to guardians
+      unawaited(ringCoordinator.cloudRing.notifyGuardians(
+        notificationService: notificationService,
+        guardians: guardians,
+        emergencyId: emergencyId,
+        userId: userId,
+        lat: lat,
+        lng: lng,
+      ));
+    } else if (ringCoordinator == null) {
+      // Legacy path
+      unawaited(streamService.startStream(userId, emergencyId));
+      unawaited(notificationService.notifyGuardians(
+        guardians: guardians,
+        emergencyId: emergencyId,
+        userId: userId,
+        lat: lat,
+        lng: lng,
+      ));
+    }
+
+    // ── MESH RING ────────────────────────────────────────────
+    if (ringCoordinator != null) {
+      // 9. SMS backup (works via cellular, independent of internet)
+      unawaited(ringCoordinator.meshRing.sendSmsAlerts(
+        smsService: smsService,
+        guardians: guardians,
+        userName: userService.currentUserModel?.name ?? 'User',
+        lat: lat,
+        lng: lng,
+      ));
+
+      // 10. Alert nearby volunteers
+      if (ringCoordinator.isMeshAvailable &&
+          guardianNetworkService != null &&
+          lat != null &&
+          lng != null) {
+        unawaited(ringCoordinator.meshRing.alertNearbyVolunteers(
+          guardianService: guardianNetworkService,
+          emergencyId: emergencyId,
+          userId: userId,
+          lat: lat,
+          lng: lng,
+        ));
+      }
+    } else {
+      // Legacy path
+      unawaited(smsService.sendEmergencySms(
+        guardians: guardians,
+        lat: lat,
+        lng: lng,
+        userName: userService.currentUserModel?.name ?? 'User',
+      ));
+    }
+
+    // 11. Auto-activate stealth mode after 5s
     Timer(const Duration(seconds: 5), () {
       activateStealthMode();
     });
