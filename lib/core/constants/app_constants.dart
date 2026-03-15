@@ -23,7 +23,7 @@ class AppConstants {
 
   // Location
   static const int locationUpdateIntervalSec = 10;
-  static const int geohashPrecision = 5; // ~5 km² for CrowdShield
+  static const int geohashPrecision = 5; // geohash length 5: ~4.9km x 4.9km (~24 km²) for CrowdShield
 
   // CrowdShield
   static const double crowdShieldRadiusMeters = 500;
