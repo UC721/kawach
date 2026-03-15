@@ -1,6 +1,12 @@
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-/** Extracts and validates the JWT from the Authorization header. */
+/**
+ * Extracts the user subject from the Authorization header JWT.
+ *
+ * NOTE: Signature verification is handled by the Supabase API gateway
+ * before the request reaches edge functions.  This helper only decodes
+ * the payload to extract `sub` for routing / authorization logic.
+ */
 export function getAuthUser(req: Request): { sub: string } | null {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;

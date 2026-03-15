@@ -38,28 +38,29 @@ class EmergencyModel {
     this.resolvedAt,
   });
 
+  // fromMap accepts both snake_case (DB schema) and camelCase (offline cache)
   factory EmergencyModel.fromMap(Map<String, dynamic> data) {
     return EmergencyModel(
-      emergencyId: data['id'] ?? data['emergencyId'] ?? data['emergency_id'] ?? '',
-      userId: data['userId'] ?? data['user_id'] ?? '',
+      emergencyId: data['id'] ?? data['emergency_id'] ?? '',
+      userId: data['user_id'] ?? '',
       status: EmergencyStatus.values.firstWhere(
         (e) => e.name == data['status'],
         orElse: () => EmergencyStatus.active,
       ),
       triggeredBy: EmergencyTrigger.values.firstWhere(
-        (e) => e.name == (data['triggeredBy'] ?? data['triggered_by']),
+        (e) => e.name == (data['triggered_by'] ?? data['triggeredBy']),
         orElse: () => EmergencyTrigger.manual,
       ),
       lat: (data['lat'] as num?)?.toDouble(),
       lng: (data['lng'] as num?)?.toDouble(),
-      audioUrl: data['audioUrl'] ?? data['audio_url'],
-      videoUrl: data['videoUrl'] ?? data['video_url'],
-      livestreamUrl: data['livestreamUrl'] ?? data['livestream_url'],
-      createdAt: (data['createdAt'] ?? data['created_at']) != null
-          ? DateTime.parse(data['createdAt'] ?? data['created_at'])
+      audioUrl: data['audio_url'] ?? data['audioUrl'],
+      videoUrl: data['video_url'] ?? data['videoUrl'],
+      livestreamUrl: data['livestream_url'] ?? data['livestreamUrl'],
+      createdAt: (data['created_at'] ?? data['createdAt']) != null
+          ? DateTime.parse(data['created_at'] ?? data['createdAt'])
           : DateTime.now(),
-      resolvedAt: (data['resolvedAt'] ?? data['resolved_at']) != null
-          ? DateTime.parse(data['resolvedAt'] ?? data['resolved_at'])
+      resolvedAt: (data['resolved_at'] ?? data['resolvedAt']) != null
+          ? DateTime.parse(data['resolved_at'] ?? data['resolvedAt'])
           : null,
     );
   }

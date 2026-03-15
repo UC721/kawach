@@ -225,8 +225,8 @@ class EmergencyService extends ChangeNotifier {
         .map((docs) {
           final activeDocs = docs.where((d) => d['status'] == EmergencyStatus.active.name).toList();
           activeDocs.sort((a, b) {
-            final dateA = a['created_at'] ?? a['createdAt'];
-            final dateB = b['created_at'] ?? b['createdAt'];
+            final dateA = a['created_at'];
+            final dateB = b['created_at'];
             return (dateB as String).compareTo(dateA as String);
           });
           return activeDocs.isNotEmpty
