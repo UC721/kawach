@@ -17,11 +17,11 @@ class EnvConfig {
   // Supabase Configuration
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://vzmnjviiulxajxrabdyt.supabase.co',
+    defaultValue: 'https://qjysynvuenridakgicvz.supabase.co',
   );
 
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6bW5qdmlpdWx4YWp4cmFiZHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMzk1NjgsImV4cCI6MjA4ODkxNTU2OH0.IwFHQE2falwxBJf6sWSrjD586lwrKhjyxgb-5KNby0s',
+    defaultValue: 'YOUR_SUPABASE_ANON_KEY',
   );
 }
