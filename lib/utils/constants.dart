@@ -98,4 +98,48 @@ class FSCollection {
   static const evidenceVault  = 'evidence_vault';
   static const activityLogs   = 'activity_logs';
   static const volunteerAlerts = 'volunteer_alerts';
+  static const locationHistory = 'location_history';
+  static const emergencyEvents = 'emergency_events';
+}
+
+// ============================================================
+// ScalabilityDefaults – Tuning knobs for millions-of-users scale
+// ============================================================
+class ScalabilityDefaults {
+  // Cache
+  static const int memoryCacheMaxItems        = 1000;
+  static const int cacheTtlMinutes            = 5;
+  static const int userProfileCacheTtlMinutes = 10;
+  static const int dangerZoneCacheTtlMinutes  = 30;
+
+  // Rate-limiting (token-bucket)
+  static const int rateLimitMaxTokens         = 60;
+  static const int rateLimitRefillMs          = 1000;
+  static const int rateLimitTokensPerRefill   = 1;
+
+  // Batch processing
+  static const int batchMaxSize               = 50;
+  static const int batchFlushIntervalMs       = 5000;
+  static const int batchMaxRetries            = 3;
+
+  // Circuit breaker
+  static const int circuitBreakerFailures     = 5;
+  static const int circuitBreakerResetMs      = 30000;
+  static const int circuitBreakerSuccesses    = 2;
+
+  // Realtime channels
+  static const int maxRealtimeChannels        = 10;
+  static const int channelIdleTimeoutMs       = 300000;  // 5 min
+  static const int channelReconnectDelayMs    = 3000;
+
+  // Deduplication
+  static const int deduplicationWindowMs      = 10000;   // 10 s
+
+  // Connection health
+  static const int healthCheckIntervalMs      = 30000;
+  static const int maxHealthCheckFailures     = 3;
+
+  // Data partitioning
+  static const int geoRegionCount             = 256;
+  static const int defaultPageSize            = 50;
 }
