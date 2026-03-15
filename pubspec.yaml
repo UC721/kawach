@@ -27,6 +27,8 @@ dependencies:
 
   # Networking
   http: ^1.2.2
+  crypto: ^3.0.6
+  pointycastle: ^4.0.0
 
   # Audio & Device
   audioplayers: ^6.1.0
