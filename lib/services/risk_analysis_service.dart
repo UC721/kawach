@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+import '../models/ai_prediction_model.dart';
 import '../utils/constants.dart';
+import 'ai/ai_model_service.dart';
 import 'danger_zone_service.dart';
 import 'predictive_danger_service.dart';
 
@@ -11,17 +13,20 @@ class RiskAnalysisService extends ChangeNotifier {
   String _riskLevel = 'LOW';
   List<String> _alerts = [];
   bool _shouldWarn = false;
+  AIPrediction? _latestAiRisk;
 
   double get compositeScore => _compositeScore;
   String get riskLevel => _riskLevel;
   List<String> get alerts => _alerts;
   bool get shouldWarn => _shouldWarn;
+  AIPrediction? get latestAiRisk => _latestAiRisk;
 
   Future<void> analyzeCurrentRisk({
     required double lat,
     required double lng,
     required DangerZoneService dangerZoneService,
     required PredictiveDangerService predictiveService,
+    AIModelService? aiModelService,
   }) async {
     _alerts = [];
     double score = 0.0;
@@ -65,6 +70,21 @@ class RiskAnalysisService extends ChangeNotifier {
       _riskLevel = 'MODERATE';
     } else {
       _riskLevel = 'LOW';
+    }
+
+    // AI: compute a model-weighted composite risk overlay.
+    if (aiModelService != null) {
+      _latestAiRisk = aiModelService.computeCompositeRisk(
+        predictiveScore: predictiveScore,
+        nearbyZoneCount: nearbyZones.length,
+        hour: hour,
+      );
+      // Use the AI risk level when confidence is high.
+      if (_latestAiRisk!.isHighConfidence) {
+        _riskLevel = _latestAiRisk!.label;
+        _compositeScore = _latestAiRisk!.score;
+        _shouldWarn = _compositeScore >= AppThresholds.mediumRiskScore;
+      }
     }
 
     notifyListeners();

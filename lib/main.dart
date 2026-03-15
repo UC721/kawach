@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'config/env_config.dart';
+import 'services/ai/ai_model_service.dart';
 import 'services/auth_service.dart';
 import 'services/location_service.dart';
 import 'services/emergency_service.dart';
@@ -49,6 +50,7 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AIModelService()),
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => UserService()),
         ChangeNotifierProvider(create: (_) => LocationService()),

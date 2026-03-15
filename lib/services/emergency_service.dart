@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
 
+import '../models/ai_prediction_model.dart';
 import '../models/emergency_model.dart';
 import '../utils/constants.dart';
+import 'ai/ai_model_service.dart';
 import 'location_service.dart';
 import 'audio_service.dart';
 import 'camera_evidence_service.dart';
@@ -24,10 +26,12 @@ class EmergencyService extends ChangeNotifier {
   EmergencyModel? _activeEmergency;
   bool _isActive = false;
   bool _stealthMode = false;
+  AIPrediction? _aiThreatAssessment;
 
   EmergencyModel? get activeEmergency => _activeEmergency;
   bool get isActive => _isActive;
   bool get stealthMode => _stealthMode;
+  AIPrediction? get aiThreatAssessment => _aiThreatAssessment;
 
   // ── TRIGGER EMERGENCY ────────────────────────────────────────
   Future<void> triggerEmergency({
@@ -41,6 +45,7 @@ class EmergencyService extends ChangeNotifier {
     required LiveStreamService streamService,
     required UserService userService,
     required OfflineEmergencyService offlineService,
+    AIModelService? aiModelService,
   }) async {
     if (_isActive) return; // Prevent duplicate triggers
     _isActive = true;
@@ -58,6 +63,17 @@ class EmergencyService extends ChangeNotifier {
 
     final lat = pos?.latitude;
     final lng = pos?.longitude;
+
+    // 1b. AI threat assessment to prioritise the emergency
+    if (aiModelService != null) {
+      _aiThreatAssessment = aiModelService.assessEmergencyThreat(
+        timeRisk: _normaliseTimeRisk(DateTime.now().hour),
+        locationRisk: (lat != null && lng != null) ? 0.5 : 0.0,
+        motionAnomaly: trigger == EmergencyTrigger.snatch ? 0.9 : 0.0,
+        voiceIndicator: trigger == EmergencyTrigger.voice ? 0.9 : 0.0,
+        environmentRisk: 0.0,
+      );
+    }
 
     // 2. Create emergency document in Firestore
     final emergencyId = _uuid.v4();
@@ -204,7 +220,16 @@ class EmergencyService extends ChangeNotifier {
     _activeEmergency = null;
     _isActive = false;
     _stealthMode = false;
+    _aiThreatAssessment = null;
     notifyListeners();
+  }
+
+  // ── AI Helpers ───────────────────────────────────────────────
+  double _normaliseTimeRisk(int hour) {
+    if (hour >= 23 || hour < 4) return 1.0;
+    if (hour >= 20 || hour < 6) return 0.65;
+    if (hour >= 18) return 0.3;
+    return 0.0;
   }
 
   // ── STREAM ACTIVE EMERGENCY ──────────────────────────────────

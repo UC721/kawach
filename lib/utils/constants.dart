@@ -83,6 +83,14 @@ class AppThresholds {
   static const dangerZoneRadiusMeters  = 300.0;
   static const sosCountdownSeconds     = 5;     // cancel window
   static const volunteerSearchRadius   = 2000.0; // meters
+
+  // AI model thresholds
+  static const aiHighConfidence        = 0.8;   // confidence to auto-act
+  static const aiMediumConfidence      = 0.5;   // confidence for warnings
+  static const aiAnomalyWindowSize     = 50;    // sensor readings
+  static const aiBehaviorHistorySize   = 100;   // location samples
+  static const aiPanicScoreThreshold   = 6.0;   // NLP panic score (0-10)
+  static const aiRouteRiskThreshold    = 5.0;   // route risk score (0-10)
 }
 
 // ============================================================
