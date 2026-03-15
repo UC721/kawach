@@ -1,11 +1,16 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import '../models/ai_prediction_model.dart';
 import '../models/emergency_model.dart';
+import 'ai/ai_model_service.dart';
 
 class OfflineEmergencyService extends ChangeNotifier {
   bool _isSyncing = false;
 
   bool get isSyncing => _isSyncing;
+
+  AIPrediction? _latestOfflineThreat;
+  AIPrediction? get latestOfflineThreat => _latestOfflineThreat;
 
   // ── Mock in-memory persistence ───────────────────────────────
   final List<String> _mockPrefs = [];
@@ -14,6 +19,24 @@ class OfflineEmergencyService extends ChangeNotifier {
     _mockPrefs.add(jsonEncode(emergency.toMap()
         ..['emergencyId'] = emergency.emergencyId));
     notifyListeners();
+  }
+
+  // ── AI offline threat assessment ─────────────────────────────
+  /// Runs an on-device threat assessment when the network is down.
+  AIPrediction assessOfflineThreat({
+    required AIModelService aiModelService,
+    double? lastKnownRiskScore,
+    bool motionAnomalyDetected = false,
+    bool voicePanicDetected = false,
+  }) {
+    _latestOfflineThreat = aiModelService.assessOfflineThreat(
+      hour: DateTime.now().hour,
+      lastKnownRiskScore: lastKnownRiskScore,
+      motionAnomalyDetected: motionAnomalyDetected,
+      voicePanicDetected: voicePanicDetected,
+    );
+    notifyListeners();
+    return _latestOfflineThreat!;
   }
 
   // ── Sync pending emergencies ─────────────────────────────────

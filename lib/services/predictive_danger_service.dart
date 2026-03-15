@@ -2,8 +2,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../models/ai_prediction_model.dart';
 import '../models/danger_zone_model.dart';
 import '../utils/constants.dart';
+import 'ai/ai_model_service.dart';
 
 /// Analyzes patterns to predict danger before user enters unsafe areas.
 class PredictiveDangerService extends ChangeNotifier {
@@ -11,15 +13,18 @@ class PredictiveDangerService extends ChangeNotifier {
 
   double _riskScore = 0.0;
   List<String> _riskFactors = [];
+  AIPrediction? _latestBehavior;
 
   double get riskScore => _riskScore;
   List<String> get riskFactors => _riskFactors;
+  AIPrediction? get latestBehavior => _latestBehavior;
 
   // ── Calculate predictive risk score ─────────────────────────
   Future<double> analyzePredictiveRisk({
     required double lat,
     required double lng,
     required List<DangerZoneModel> dangerZones,
+    AIModelService? aiModelService,
   }) async {
     _riskFactors = [];
     double score = 0.0;
@@ -69,6 +74,24 @@ class PredictiveDangerService extends ChangeNotifier {
     }
 
     _riskScore = score.clamp(0, 10);
+
+    // AI: record location and run behaviour analysis for pattern detection.
+    if (aiModelService != null) {
+      aiModelService.recordLocation(lat: lat, lng: lng);
+      _latestBehavior = aiModelService.analyzeBehavior(
+        currentHour: hour,
+        isInDangerZone: nearbyZones.isNotEmpty,
+      );
+      // Boost score if AI detects erratic or fleeing behaviour.
+      if (_latestBehavior != null &&
+          (_latestBehavior!.label == 'ERRATIC' ||
+              _latestBehavior!.label == 'FLEEING')) {
+        _riskScore = (_riskScore + _latestBehavior!.score * 0.3).clamp(0, 10);
+        _riskFactors.add(
+            'AI detected ${_latestBehavior!.label.toLowerCase()} behavior');
+      }
+    }
+
     notifyListeners();
     return _riskScore;
   }

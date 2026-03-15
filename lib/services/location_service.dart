@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../utils/constants.dart';
+import 'ai/ai_model_service.dart';
 
 class LocationService extends ChangeNotifier {
   final SupabaseClient _db = Supabase.instance.client;
@@ -11,6 +12,7 @@ class LocationService extends ChangeNotifier {
   Position? _currentPosition;
   StreamSubscription<Position>? _positionStream;
   Timer? _uploadTimer;
+  AIModelService? _aiModelService;
 
   bool _isTracking = false;
 
@@ -31,9 +33,14 @@ class LocationService extends ChangeNotifier {
   }
 
   // ── Start live tracking ──────────────────────────────────────
-  Future<void> startTracking(String userId, String emergencyId) async {
+  Future<void> startTracking(
+    String userId,
+    String emergencyId, {
+    AIModelService? aiModelService,
+  }) async {
     await _ensurePermission();
     _isTracking = true;
+    _aiModelService = aiModelService;
 
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
@@ -42,6 +49,14 @@ class LocationService extends ChangeNotifier {
       ),
     ).listen((pos) async {
       _currentPosition = pos;
+
+      // AI: feed location into behaviour analyzer for continuous tracking.
+      _aiModelService?.recordLocation(
+        lat: pos.latitude,
+        lng: pos.longitude,
+        speed: pos.speed,
+      );
+
       notifyListeners();
       // Upload to Firestore every 5 seconds
       await _uploadLocation(userId, emergencyId, pos);

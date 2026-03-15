@@ -4,24 +4,29 @@ import 'package:flutter/foundation.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 
+import '../models/ai_prediction_model.dart';
 import '../models/danger_zone_model.dart';
 import '../utils/constants.dart';
+import 'ai/ai_model_service.dart';
 import 'safe_route_web_connector.dart' as web_interop;
 
 class RouteSafetyService extends ChangeNotifier {
   List<LatLng> _safeRoute = [];
   bool _isLoading = false;
   String? _errorMessage;
+  AIPrediction? _latestRouteRisk;
 
   List<LatLng> get safeRoute => _safeRoute;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  AIPrediction? get latestRouteRisk => _latestRouteRisk;
 
   // ── Calculate safest route avoiding danger zones ─────────────
   Future<List<LatLng>> calculateSafeRoute({
     required LatLng origin,
     required LatLng destination,
     List<DangerZoneModel> dangerZones = const [],
+    AIModelService? aiModelService,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -82,6 +87,17 @@ class RouteSafetyService extends ChangeNotifier {
         }
       } else {
         _errorMessage = 'Route calculation failed';
+      }
+
+      // AI: overlay route risk prediction.
+      if (aiModelService != null && _safeRoute.isNotEmpty) {
+        _latestRouteRisk = aiModelService.predictRouteRisk(
+          waypoints: _safeRoute
+              .map((p) => {'lat': p.latitude, 'lng': p.longitude})
+              .toList(),
+          dangerZones: dangerZones,
+          hour: DateTime.now().hour,
+        );
       }
     } catch (e) {
       _errorMessage = 'Unable to calculate route: $e';

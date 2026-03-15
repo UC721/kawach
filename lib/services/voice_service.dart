@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../models/ai_prediction_model.dart';
 import '../utils/constants.dart';
+import 'ai/ai_model_service.dart';
 
 class VoiceService extends ChangeNotifier {
   final SpeechToText _speech = SpeechToText();
@@ -11,9 +13,12 @@ class VoiceService extends ChangeNotifier {
   String _lastWords = '';
   Timer? _restartTimer;
   Function()? _onPanicDetected;
+  AIModelService? _aiModelService;
+  AIPrediction? _latestNlpPrediction;
 
   bool get isListening => _isListening;
   String get lastWords => _lastWords;
+  AIPrediction? get latestNlpPrediction => _latestNlpPrediction;
 
   Future<bool> initialize() async {
     _isAvailable = await _speech.initialize(
@@ -28,9 +33,13 @@ class VoiceService extends ChangeNotifier {
     return _isAvailable;
   }
 
-  void startListening({required Function() onPanicDetected}) {
+  void startListening({
+    required Function() onPanicDetected,
+    AIModelService? aiModelService,
+  }) {
     if (!_isAvailable || _isListening) return;
     _onPanicDetected = onPanicDetected;
+    _aiModelService = aiModelService;
     _isListening = true;
     _listenCycle();
     notifyListeners();
@@ -57,6 +66,16 @@ class VoiceService extends ChangeNotifier {
   }
 
   void _checkForPanicPhrases(String text) {
+    // AI-enhanced NLP analysis when available.
+    if (_aiModelService != null) {
+      _latestNlpPrediction = _aiModelService!.analyzeSpeech(text);
+      if (_aiModelService!.isSpeechPanic(text)) {
+        _onPanicDetected?.call();
+        return;
+      }
+    }
+
+    // Fallback: keyword matching.
     for (final phrase in AppStrings.panicPhrases) {
       if (text.contains(phrase)) {
         _onPanicDetected?.call();
@@ -70,6 +89,7 @@ class VoiceService extends ChangeNotifier {
     _isListening = false;
     _restartTimer?.cancel();
     _onPanicDetected = null;
+    _aiModelService = null;
     notifyListeners();
   }
 

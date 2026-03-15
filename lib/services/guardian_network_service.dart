@@ -2,8 +2,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../models/ai_prediction_model.dart';
 import '../models/guardian_network_model.dart';
 import '../utils/constants.dart';
+import 'ai/ai_model_service.dart';
 
 class GuardianNetworkService extends ChangeNotifier {
   final SupabaseClient _db = Supabase.instance.client;
@@ -13,6 +15,9 @@ class GuardianNetworkService extends ChangeNotifier {
 
   bool _isRegistered = false;
   bool get isRegistered => _isRegistered;
+
+  AIPrediction? _latestDispatchPriority;
+  AIPrediction? get latestDispatchPriority => _latestDispatchPriority;
 
   // ── Register as a volunteer ──────────────────────────────────
   Future<void> registerAsVolunteer({
@@ -104,12 +109,26 @@ class GuardianNetworkService extends ChangeNotifier {
     required String userId,
     required double lat,
     required double lng,
+    AIModelService? aiModelService,
+    double currentRiskScore = 0.0,
   }) async {
     final volunteers = await findNearbyVolunteers(lat: lat, lng: lng);
 
     // Store alert references so volunteers can pull details
     for (final vol in volunteers) {
-      await _db.from(FSCollection.volunteerAlerts).insert({
+      final distance = Geolocator.distanceBetween(
+          lat, lng, vol.lat ?? lat, vol.lng ?? lng);
+
+      // AI: score dispatch urgency per guardian.
+      if (aiModelService != null) {
+        _latestDispatchPriority = aiModelService.scoreGuardianAlertUrgency(
+          distanceToUser: distance,
+          currentRiskScore: currentRiskScore,
+          hour: DateTime.now().hour,
+        );
+      }
+
+      final alertData = <String, dynamic>{
         'volunteerId': vol.volunteerId,
         'emergencyId': emergencyId,
         'userId': userId,
@@ -117,7 +136,14 @@ class GuardianNetworkService extends ChangeNotifier {
         'lng': lng,
         'sentAt': DateTime.now().toIso8601String(),
         'status': 'pending',
-      });
+      };
+
+      if (_latestDispatchPriority != null) {
+        alertData['ai_urgency'] = _latestDispatchPriority!.label;
+        alertData['ai_urgency_score'] = _latestDispatchPriority!.score;
+      }
+
+      await _db.from(FSCollection.volunteerAlerts).insert(alertData);
     }
   }
 

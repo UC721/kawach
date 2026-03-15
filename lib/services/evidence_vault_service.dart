@@ -3,12 +3,17 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
 
+import '../models/ai_prediction_model.dart';
 import '../models/evidence_model.dart';
 import '../utils/constants.dart';
+import 'ai/ai_model_service.dart';
 
 class EvidenceVaultService extends ChangeNotifier {
   final SupabaseClient _db = Supabase.instance.client;
   final _uuid = const Uuid();
+
+  AIPrediction? _latestSceneClassification;
+  AIPrediction? get latestSceneClassification => _latestSceneClassification;
 
   Future<void> saveEvidence({
     required String userId,
@@ -16,7 +21,15 @@ class EvidenceVaultService extends ChangeNotifier {
     String? audioUrl,
     String? videoUrl,
     Position? position,
+    AIModelService? aiModelService,
   }) async {
+    // AI: classify the scene for this evidence item.
+    if (aiModelService != null) {
+      _latestSceneClassification = aiModelService.classifyEvidenceScene(
+        hour: DateTime.now().hour,
+      );
+    }
+
     final evidence = EvidenceModel(
       evidenceId: _uuid.v4(),
       userId: userId,
@@ -28,9 +41,15 @@ class EvidenceVaultService extends ChangeNotifier {
       timestamp: DateTime.now(),
     );
 
-    await _db
-        .from(FSCollection.evidenceVault)
-        .insert(evidence.toMap());
+    final evidenceMap = evidence.toMap();
+    // Attach AI metadata when available.
+    if (_latestSceneClassification != null) {
+      evidenceMap['ai_scene_type'] = _latestSceneClassification!.label;
+      evidenceMap['ai_scene_confidence'] =
+          _latestSceneClassification!.confidence;
+    }
+
+    await _db.from(FSCollection.evidenceVault).insert(evidenceMap);
   }
 
   Future<List<EvidenceModel>> getEvidence({

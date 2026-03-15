@@ -4,13 +4,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../models/ai_prediction_model.dart';
+import 'ai/ai_model_service.dart';
+
 class CameraEvidenceService extends ChangeNotifier {
   final SupabaseStorageClient _storage = Supabase.instance.client.storage;
   CameraController? _controller;
   bool _isRecording = false;
   String? _currentVideoPath;
+  AIPrediction? _latestSceneAnalysis;
 
   bool get isRecording => _isRecording;
+  AIPrediction? get latestSceneAnalysis => _latestSceneAnalysis;
 
   // ── Initialize front camera silently ────────────────────────
   Future<void> initializeCamera() async {
@@ -50,8 +55,17 @@ class CameraEvidenceService extends ChangeNotifier {
   Future<String?> captureAndUpload({
     required String userId,
     required String emergencyId,
+    AIModelService? aiModelService,
   }) async {
     await startVideoRecording();
+
+    // AI: classify the scene at capture time.
+    if (aiModelService != null) {
+      _latestSceneAnalysis = aiModelService.classifyEvidenceScene(
+        hour: DateTime.now().hour,
+      );
+    }
+
     // Record for 30 seconds
     await Future.delayed(const Duration(seconds: 30));
     return await stopAndUpload(userId: userId, emergencyId: emergencyId);
