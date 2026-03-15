@@ -41,11 +41,15 @@ class ServiceLifecycleManager extends ChangeNotifier
 
   /// Registers this instance as a lifecycle observer.
   ///
-  /// Must be called once after the [WidgetsBinding] is initialised (e.g. in
-  /// `main()` after `WidgetsFlutterBinding.ensureInitialized()`).
+  /// Must be called once after [WidgetsFlutterBinding.ensureInitialized] has
+  /// been invoked (typically in `main()`).  If the binding is not yet ready
+  /// this method is a no-op to avoid crashes on early invocation.
   void initialize() {
     if (_observing) return;
-    WidgetsBinding.instance.addObserver(this);
+    final binding = WidgetsBinding.instance;
+    // ignore: unnecessary_null_comparison
+    if (binding == null) return;
+    binding.addObserver(this);
     _observing = true;
   }
 

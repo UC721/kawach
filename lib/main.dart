@@ -49,7 +49,7 @@ Future<void> main() async {
     anonKey: EnvConfig.supabaseAnonKey,
   );
 
-  // Initialise background service components
+  // Initialize background service components
   final backgroundService = BackgroundService();
   final taskManager = BackgroundTaskManager();
   final lifecycleManager = ServiceLifecycleManager(
