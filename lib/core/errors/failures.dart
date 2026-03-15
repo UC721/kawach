@@ -1,7 +1,7 @@
 /// Domain-level failure types for KAWACH.
 ///
-/// Every repository returns [Either<Failure, T>] so the presentation
-/// layer never needs to handle raw exceptions.
+/// Repositories expose failures as [Failure] instances instead of
+/// throwing raw exceptions to the presentation layer.
 abstract class Failure {
   const Failure(this.message);
   final String message;
