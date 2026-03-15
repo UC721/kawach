@@ -86,16 +86,24 @@ class AppThresholds {
 }
 
 // ============================================================
-// FirestoreCollections – Firestore path constants
+// FirestoreCollections – Supabase table / path constants
 // ============================================================
 class FSCollection {
-  static const users          = 'users';
-  static const guardians      = 'guardians';
-  static const emergencies    = 'emergencies';
-  static const reports        = 'reports';
-  static const dangerZones    = 'dangerzone';
-  static const guardianNetwork= 'guardian_network';
-  static const evidenceVault  = 'evidence_vault';
-  static const activityLogs   = 'activity_logs';
-  static const volunteerAlerts = 'volunteer_alerts';
+  // Canonical table names (match Supabase migration)
+  static const users            = 'users';
+  static const guardians        = 'guardians';
+  static const sosAlerts        = 'sos_alerts';
+  static const evidenceItems    = 'evidence_items';
+  static const communityReports = 'community_reports';
+  static const crowdAlerts      = 'crowd_alerts';
+  static const meshMessages     = 'mesh_messages';
+  static const activityLogs     = 'activity_logs';
+  static const dangerZones      = 'danger_zones';
+  static const guardianNetwork  = 'guardian_network';
+  static const volunteerAlerts  = 'volunteer_alerts';
+
+  // Legacy aliases (backward compatibility with existing code)
+  static const emergencies      = 'sos_alerts';
+  static const reports          = 'community_reports';
+  static const evidenceVault    = 'evidence_items';
 }
