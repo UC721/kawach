@@ -31,7 +31,7 @@ class RouteScorer {
     return 2.0; // Late night
   }
 
-  /// Penalise longer routes (more exposure time).
+  /// Penalize longer routes (more exposure time).
   double _distancePenalty(double meters) {
     if (meters < 500) return 9.0;
     if (meters < 1500) return 7.0;

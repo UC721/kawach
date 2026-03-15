@@ -7,7 +7,7 @@ import 'safety_score_service.dart';
 
 /// Renders a safety heatmap overlay for Google Maps.
 ///
-/// Converts [AreaSafetyScore] data into coloured overlay tiles
+/// Converts [AreaSafetyScore] data into colored overlay tiles
 /// where green = safe, yellow = moderate, red = unsafe.
 class HeatmapRenderer {
   /// Convert a safety score (0–10) to a heatmap colour.
