@@ -143,7 +143,8 @@ class MeshProtocolService extends ChangeNotifier {
 
   // ── Relay preparation ───────────────────────────────────────────
 
-  /// Decrements TTL (by elapsed seconds) and increments the hop counter.
+  /// Recalculates remaining TTL based on elapsed time and increments the
+  /// hop counter.
   MeshMessageModel prepareForRelay(MeshMessageModel message) {
     final elapsed =
         DateTime.now().difference(message.createdAt).inSeconds;

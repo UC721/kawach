@@ -80,7 +80,7 @@ class BloomFilter {
   // ── Internal helpers ────────────────────────────────────────────
 
   /// Generates [hashCount] bit indices for [item] using double-hashing
-  /// (Kirsch–Mitzenmacker optimisation) over a single SHA-256 digest.
+  /// (Kirsch–Mitzenmacker optimization) over a single SHA-256 digest.
   List<int> _hashIndices(String item) {
     final digest = sha256.convert(utf8.encode(item)).bytes;
     // Use first 4 bytes as h1, next 4 bytes as h2.
