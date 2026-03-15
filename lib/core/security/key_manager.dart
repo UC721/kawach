@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
@@ -48,8 +49,8 @@ class KeyManager {
     final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
     return hkdf.deriveKey(
       secretKey: masterKey,
-      nonce: _utf8Bytes(_evidenceKeyInfoBytes),
-      info: _utf8Bytes(_evidenceKeyInfoBytes),
+      nonce: Uint8List(0), // empty salt
+      info: utf8.encode(_evidenceKeyInfoBytes),
     );
   }
 
@@ -102,5 +103,5 @@ class KeyManager {
   static String _bytesToHex(List<int> bytes) =>
       bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
-  static Uint8List _utf8Bytes(String s) => Uint8List.fromList(s.codeUnits);
+  static Uint8List _utf8Bytes(String s) => Uint8List.fromList(utf8.encode(s));
 }

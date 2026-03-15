@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -87,7 +88,7 @@ class EncryptionService {
     final sessionKey = await hkdf.deriveKey(
       secretKey: SecretKey(sharedSecretBytes),
       nonce: Uint8List(0),
-      info: 'kawach-mesh-v1'.codeUnits,
+      info: [...utf8.encode('kawach-mesh-v1'), ...ephemeralPublicKey.bytes],
     );
 
     // Encrypt with ChaCha20-Poly1305
@@ -138,7 +139,7 @@ class EncryptionService {
     final sessionKey = await hkdf.deriveKey(
       secretKey: SecretKey(sharedSecretBytes),
       nonce: Uint8List(0),
-      info: 'kawach-mesh-v1'.codeUnits,
+      info: [...utf8.encode('kawach-mesh-v1'), ...ephemeralPubBytes],
     );
 
     // Decrypt
