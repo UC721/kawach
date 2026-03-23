@@ -6,7 +6,7 @@ import '../models/danger_zone_model.dart';
 import '../utils/constants.dart';
 
 class DangerZoneService extends ChangeNotifier {
-  final SupabaseClient _db = Supabase.instance.client;
+  SupabaseClient get _db => Supabase.instance.client;
 
   List<DangerZoneModel> _dangerZones = [];
   List<DangerZoneModel> get dangerZones => _dangerZones;

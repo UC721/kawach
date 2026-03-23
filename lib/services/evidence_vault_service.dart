@@ -7,7 +7,7 @@ import '../models/evidence_model.dart';
 import '../utils/constants.dart';
 
 class EvidenceVaultService extends ChangeNotifier {
-  final SupabaseClient _db = Supabase.instance.client;
+  SupabaseClient get _db => Supabase.instance.client;
   final _uuid = const Uuid();
 
   Future<void> saveEvidence({

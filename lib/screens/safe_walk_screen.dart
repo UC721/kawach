@@ -91,7 +91,20 @@ class _SafeWalkScreenState extends State<SafeWalkScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final emergency = context.watch<EmergencyService>();
+    if (emergency.stealthMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.stealthMode, (_) => false);
+      });
+    }
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.dashboard, (route) => false);
+      },
+      child: Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Safe Walk Mode')),
       body: Padding(

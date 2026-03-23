@@ -6,7 +6,7 @@ import '../models/guardian_network_model.dart';
 import '../utils/constants.dart';
 
 class GuardianNetworkService extends ChangeNotifier {
-  final SupabaseClient _db = Supabase.instance.client;
+  SupabaseClient get _db => Supabase.instance.client;
 
   List<GuardianNetworkModel> _nearbyVolunteers = [];
   List<GuardianNetworkModel> get nearbyVolunteers => _nearbyVolunteers;

@@ -3,20 +3,28 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService extends ChangeNotifier {
-  final GoTrueClient _auth = Supabase.instance.client.auth;
+  GoTrueClient get _auth => Supabase.instance.client.auth;
   static const String _authKey = 'is_authenticated';
 
   bool _isAuthenticated = false;
 
   AuthService() {
     _loadAuthState();
-    _auth.onAuthStateChange.listen((data) {
-      if (data.session != null) {
-        _setAuthState(true);
-      } else {
-        _setAuthState(false);
-      }
-    });
+    _initAuthListener();
+  }
+
+  void _initAuthListener() {
+    try {
+      _auth.onAuthStateChange.listen((data) {
+        if (data.session != null) {
+          _setAuthState(true);
+        } else {
+          _setAuthState(false);
+        }
+      });
+    } catch (e) {
+      debugPrint('AuthService: Failed to init auth listener (Supabase might not be ready): $e');
+    }
   }
 
   Future<void> _loadAuthState() async {

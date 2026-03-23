@@ -18,7 +18,7 @@ import 'offline_emergency_service.dart';
 
 /// Central emergency pipeline – all SOS triggers call [triggerEmergency].
 class EmergencyService extends ChangeNotifier {
-  final SupabaseClient _db = Supabase.instance.client;
+  SupabaseClient get _db => Supabase.instance.client;
   final _uuid = const Uuid();
 
   EmergencyModel? _activeEmergency;

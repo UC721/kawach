@@ -6,7 +6,7 @@ import '../utils/constants.dart';
 /// Manages live streaming sessions during emergencies.
 /// In production, integrate with a real RTMP/WebRTC service.
 class LiveStreamService extends ChangeNotifier {
-  final SupabaseClient _db = Supabase.instance.client;
+  SupabaseClient get _db => Supabase.instance.client;
 
   bool _isStreaming = false;
   String? _streamUrl;

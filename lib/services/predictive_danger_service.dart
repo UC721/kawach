@@ -7,7 +7,7 @@ import '../utils/constants.dart';
 
 /// Analyzes patterns to predict danger before user enters unsafe areas.
 class PredictiveDangerService extends ChangeNotifier {
-  final SupabaseClient _db = Supabase.instance.client;
+  SupabaseClient get _db => Supabase.instance.client;
 
   double _riskScore = 0.0;
   List<String> _riskFactors = [];

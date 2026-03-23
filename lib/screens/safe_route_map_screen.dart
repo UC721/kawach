@@ -21,6 +21,7 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
   LatLng? _destination;
   Set<Polyline> _polylines = {};
   Set<Marker> _markers = {};
+  Set<Circle> _dangerCircles = {};
   bool _loading = false;
   CameraPosition? _currentCameraPosition;
   bool _isCameraMoving = false;
@@ -80,11 +81,59 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
       });
     }
     setState(() => _loading = false);
+    _buildHeatmap(zones);
+  }
+
+  void _buildHeatmap(List<DangerZoneModel> zones) {
+    final circles = <Circle>{};
+    for (final zone in zones) {
+      final color = _severityToColor(zone.severity);
+      for (int i = 1; i <= 3; i++) {
+        circles.add(Circle(
+          circleId: CircleId('${zone.zoneId}_$i'),
+          center: LatLng(zone.lat, zone.lng),
+          radius: AppThresholds.dangerZoneRadiusMeters * (i / 3),
+          fillColor: color.withOpacity(0.15 * (4 - i)),
+          strokeWidth: 0,
+        ));
+      }
+      circles.add(Circle(
+        circleId: CircleId('${zone.zoneId}_border'),
+        center: LatLng(zone.lat, zone.lng),
+        radius: AppThresholds.dangerZoneRadiusMeters,
+        fillColor: Colors.transparent,
+        strokeColor: color.withOpacity(0.5),
+        strokeWidth: 2,
+      ));
+    }
+    setState(() => _dangerCircles = circles);
+  }
+
+  Color _severityToColor(DangerSeverity s) {
+    switch (s) {
+      case DangerSeverity.critical: return const Color(0xFF9C27B0);
+      case DangerSeverity.high: return const Color(0xFFF44336);
+      case DangerSeverity.medium: return const Color(0xFFFF9800);
+      case DangerSeverity.low: return const Color(0xFF4CAF50);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final emergency = context.watch<EmergencyService>();
+    if (emergency.stealthMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.stealthMode, (_) => false);
+      });
+    }
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.dashboard, (route) => false);
+      },
+      child: Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Safe Route'),
@@ -112,6 +161,7 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
             myLocationEnabled: true,
             polylines: _polylines,
             markers: _markers,
+            circles: _dangerCircles,
             onMapCreated: (c) => _mapController = c,
             onCameraMoveStarted: () => setState(() => _isCameraMoving = true),
             onCameraMove: (pos) => _currentCameraPosition = pos,

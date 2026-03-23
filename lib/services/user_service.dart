@@ -8,7 +8,7 @@ import '../models/guardian_model.dart';
 import '../utils/constants.dart';
 
 class UserService extends ChangeNotifier {
-  final SupabaseClient _db = Supabase.instance.client;
+  SupabaseClient get _db => Supabase.instance.client;
   static const String _userKey = 'current_user_data';
 
   UserModel? _currentUserModel;

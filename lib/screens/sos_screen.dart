@@ -107,6 +107,13 @@ class _SosScreenState extends State<SosScreen>
 
   @override
   Widget build(BuildContext context) {
+    final emergency = context.watch<EmergencyService>();
+    if (emergency.stealthMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.stealthMode, (_) => false);
+      });
+    }
+
     return Scaffold(
       backgroundColor: AppColors.danger,
       body: Container(

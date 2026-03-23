@@ -1,4 +1,4 @@
-import 'dart:io';
+// import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -6,7 +6,7 @@ import 'package:record/record.dart';
 
 class AudioService extends ChangeNotifier {
   final AudioRecorder _recorder = AudioRecorder();
-  final SupabaseStorageClient _storage = Supabase.instance.client.storage;
+  SupabaseStorageClient get _storage => Supabase.instance.client.storage;
 
   bool _isRecording = false;
   String? _currentPath;

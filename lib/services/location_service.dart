@@ -6,7 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import '../utils/constants.dart';
 
 class LocationService extends ChangeNotifier {
-  final SupabaseClient _db = Supabase.instance.client;
+  SupabaseClient get _db => Supabase.instance.client;
 
   Position? _currentPosition;
   StreamSubscription<Position>? _positionStream;

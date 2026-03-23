@@ -62,15 +62,23 @@ class _SplashScreenState extends State<SplashScreen>
     });
 
     // Navigate after 2.5 seconds
+    debugPrint('--- KAWACH: SplashScreen: Starting navigation timer ---');
     Timer(const Duration(milliseconds: 2500), _navigate);
   }
 
   void _navigate() {
-    if (!mounted) return;
+    debugPrint('--- KAWACH: SplashScreen: _navigate called ---');
+    if (!mounted) {
+      debugPrint('--- KAWACH: SplashScreen: NOT mounted, aborting navigation ---');
+      return;
+    }
     final auth = context.read<AuthService>();
+    debugPrint('--- KAWACH: SplashScreen: Checking authentication status... ---');
     if (auth.isAuthenticated) {
+      debugPrint('--- KAWACH: SplashScreen: Authenticated, navigating to Dashboard ---');
       Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
     } else {
+      debugPrint('--- KAWACH: SplashScreen: NOT authenticated, navigating to Login ---');
       Navigator.pushReplacementNamed(context, AppRoutes.login);
     }
   }

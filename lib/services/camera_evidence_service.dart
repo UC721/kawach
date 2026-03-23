@@ -1,11 +1,11 @@
-import 'dart:io';
+// import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 class CameraEvidenceService extends ChangeNotifier {
-  final SupabaseStorageClient _storage = Supabase.instance.client.storage;
+  SupabaseStorageClient get _storage => Supabase.instance.client.storage;
   CameraController? _controller;
   bool _isRecording = false;
   String? _currentVideoPath;
