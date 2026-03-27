@@ -89,13 +89,18 @@ class AppThresholds {
 // FirestoreCollections – Firestore path constants
 // ============================================================
 class FSCollection {
-  static const users          = 'users';
-  static const guardians      = 'guardians';
-  static const emergencies    = 'emergencies';
-  static const reports        = 'reports';
-  static const dangerZones    = 'dangerzone';
-  static const guardianNetwork= 'guardian_network';
-  static const evidenceVault  = 'evidence_vault';
-  static const activityLogs   = 'activity_logs';
-  static const volunteerAlerts = 'volunteer_alerts';
+  static const users              = 'users';
+  static const guardians          = 'guardians';
+  static const emergencies        = 'emergencies';
+  static const reports            = 'reports';
+  static const dangerZones        = 'dangerzone';
+  static const guardianNetwork    = 'guardian_network';
+  static const evidenceVault      = 'evidence_vault';
+  static const activityLogs       = 'activity_logs';
+  static const volunteerAlerts    = 'volunteer_alerts';
+  static const volunteerResponses = 'volunteer_responses';
+  static const safeWalkSessions   = 'safe_walk_sessions';
+  static const locationHistory    = 'location_history';
+  static const deviceTokens       = 'device_tokens';
+  static const auditLog           = 'audit_log';
 }
