@@ -57,14 +57,14 @@ class LocationService extends ChangeNotifier {
       'lat': pos.latitude,
       'lng': pos.longitude,
       'locationUpdatedAt': DateTime.now().toIso8601String(),
-    }).eq('emergencyId', emergencyId);
+    }).eq('id', emergencyId);
 
     // Update user's live location
     await _db.from(FSCollection.users).update({
       'liveLat': pos.latitude,
       'liveLng': pos.longitude,
       'liveLocationUpdatedAt': DateTime.now().toIso8601String(),
-    }).eq('userId', userId);
+    }).eq('id', userId);
   }
 
   // ── Stop tracking ────────────────────────────────────────────
@@ -88,8 +88,8 @@ class LocationService extends ChangeNotifier {
   Stream<Map<String, double>?> streamUserLocation(String userId) {
     return _db
         .from(FSCollection.users)
-        .stream(primaryKey: ['userId'])
-        .eq('userId', userId)
+        .stream(primaryKey: ['id'])
+        .eq('id', userId)
         .map((docs) {
           if (docs.isEmpty) return null;
           final doc = docs.first;
