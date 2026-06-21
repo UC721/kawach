@@ -212,7 +212,7 @@ class _ToggleTile extends StatelessWidget {
               children: [
                 Text(title,
                     style: const TextStyle(
-                        color: Colors.white, fontSize: 14)),
+                        color: AppColors.textPrimary, fontSize: 14)),
                 Text(subtitle,
                     style: const TextStyle(
                         color: AppColors.textSecondary, fontSize: 11)),
@@ -249,11 +249,11 @@ class _InfoTile extends StatelessWidget {
           Icon(icon, color: AppColors.textSecondary, size: 20),
           const SizedBox(width: 14),
           Text(label,
-              style: const TextStyle(color: Colors.white70, fontSize: 13)),
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
           const Spacer(),
           Text(value,
               style:
-                  const TextStyle(color: Colors.white54, fontSize: 13)),
+                  const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
         ],
       ),
     );

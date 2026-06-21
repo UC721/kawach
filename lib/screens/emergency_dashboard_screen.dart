@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../services/emergency_service.dart';
 import '../services/location_service.dart';
 import '../services/audio_service.dart';
+import '../services/background_sos_service.dart';
 import '../services/live_stream_service.dart';
+import '../services/mesh_relay_service.dart';
 import '../services/siren_service.dart';
 import '../utils/constants.dart';
 
@@ -18,9 +20,11 @@ class EmergencyDashboardScreen extends StatelessWidget {
     final audio = context.watch<AudioService>();
     final stream = context.watch<LiveStreamService>();
     final siren = context.watch<SirenService>();
+    final relay = context.watch<MeshRelayService>();
+    final background = context.watch<BackgroundSosService>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1A0000),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -31,33 +35,33 @@ class EmergencyDashboardScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.danger.withOpacity(0.3),
+                    AppColors.danger.withOpacity(0.08),
                     Colors.transparent
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
               ),
-              child: Column(
+              child: const Column(
                 children: [
-                  const Icon(Icons.warning_rounded,
+                  Icon(Icons.warning_rounded,
                       color: AppColors.danger, size: 44),
-                  const SizedBox(height: 8),
-                  const Text(
+                  SizedBox(height: 8),
+                  Text(
                     '🚨 EMERGENCY ACTIVE',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.danger,
                       fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     'Emergency responders and guardians have been alerted',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.7), fontSize: 13),
+                        color: AppColors.textSecondary, fontSize: 13),
                   ),
                 ],
               ),
@@ -101,6 +105,20 @@ class EmergencyDashboardScreen extends StatelessWidget {
                     status: 'SENT',
                     active: true,
                   ),
+                  const SizedBox(height: 12),
+                  _StatusIndicatorCard(
+                    icon: Icons.hub_outlined,
+                    title: 'Mesh Relay',
+                    status: relay.isRelaying ? 'BROADCASTING' : 'STANDBY',
+                    active: relay.isRelaying,
+                  ),
+                  const SizedBox(height: 12),
+                  _StatusIndicatorCard(
+                    icon: Icons.security_update_warning_outlined,
+                    title: 'Background Guard',
+                    status: background.isRunning ? 'PINNED' : 'IDLE',
+                    active: background.isRunning,
+                  ),
                   const SizedBox(height: 24),
                   // Location Display
                   if (location.currentPosition != null)
@@ -109,19 +127,27 @@ class EmergencyDashboardScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade200),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.02),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text('Current Location',
                               style: TextStyle(
-                                  color: Colors.white60, fontSize: 12)),
+                                  color: AppColors.textSecondary, fontSize: 12)),
                           const SizedBox(height: 4),
                           Text(
                             '${location.currentPosition!.latitude.toStringAsFixed(6)}, '
                             '${location.currentPosition!.longitude.toStringAsFixed(6)}',
                             style: const TextStyle(
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600),
                           ),
@@ -187,6 +213,10 @@ class EmergencyDashboardScreen extends StatelessWidget {
                           audioService: context.read<AudioService>(),
                           streamService:
                               context.read<LiveStreamService>(),
+                          backgroundSosService:
+                              context.read<BackgroundSosService>(),
+                          meshRelayService:
+                              context.read<MeshRelayService>(),
                         );
                         if (context.mounted) {
                           Navigator.pushNamedAndRemoveUntil(
@@ -227,17 +257,24 @@ class _StatusIndicatorCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color:
-              active ? AppColors.primary.withOpacity(0.4) : Colors.white10,
+              active ? AppColors.primary.withOpacity(0.4) : Colors.grey.shade200,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Icon(icon,
-              color: active ? AppColors.primary : Colors.white30, size: 24),
+              color: active ? AppColors.primary : Colors.grey.shade400, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Text(title,
-                style: const TextStyle(color: Colors.white, fontSize: 14)),
+                style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
           ),
           Container(
             padding:
@@ -245,13 +282,13 @@ class _StatusIndicatorCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: active
                   ? AppColors.safe.withOpacity(0.2)
-                  : Colors.white10,
+                  : Colors.grey.shade100,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               status,
               style: TextStyle(
-                color: active ? AppColors.safe : Colors.white54,
+                color: active ? AppColors.safe : Colors.grey.shade500,
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1,

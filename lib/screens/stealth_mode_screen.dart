@@ -21,10 +21,10 @@ class StealthModeScreen extends StatelessWidget {
             builder: (_) => AlertDialog(
               backgroundColor: AppColors.surface,
               title: const Text('Exit Stealth Mode?',
-                  style: TextStyle(color: Colors.white)),
+                  style: TextStyle(color: AppColors.textPrimary)),
               content: const Text(
                 'Emergency will continue running. Enter your PIN to exit.',
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(color: AppColors.textSecondary),
               ),
               actions: [
                 TextButton(

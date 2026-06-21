@@ -7,11 +7,14 @@ import '../services/location_service.dart';
 import '../services/audio_service.dart';
 import '../services/camera_evidence_service.dart';
 import '../services/evidence_vault_service.dart';
+import '../services/guardian_network_service.dart';
 import '../services/notification_service.dart';
 import '../services/sms_service.dart';
 import '../services/live_stream_service.dart';
 import '../services/user_service.dart';
 import '../services/offline_emergency_service.dart';
+import '../services/mesh_relay_service.dart';
+import '../services/background_sos_service.dart';
 import '../models/emergency_model.dart';
 import '../utils/constants.dart';
 
@@ -83,6 +86,9 @@ class _SosScreenState extends State<SosScreen>
       streamService: context.read<LiveStreamService>(),
       userService: context.read<UserService>(),
       offlineService: context.read<OfflineEmergencyService>(),
+      guardianNetworkService: context.read<GuardianNetworkService>(),
+      meshRelayService: context.read<MeshRelayService>(),
+      backgroundSosService: context.read<BackgroundSosService>(),
     );
 
     if (mounted) {

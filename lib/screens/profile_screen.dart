@@ -95,7 +95,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             const Text('Add Emergency Contact',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 20),
@@ -179,7 +179,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               const Text('Emergency Contacts',
                   style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 16,
                       fontWeight: FontWeight.w600)),
               IconButton(
@@ -246,7 +246,7 @@ class _Field extends StatelessWidget {
       controller: ctrl,
       enabled: enabled,
       keyboardType: type,
-      style: const TextStyle(color: Colors.white),
+      style: const TextStyle(color: AppColors.textPrimary),
       decoration: InputDecoration(
           labelText: label,
           prefixIcon:
@@ -277,7 +277,7 @@ class _ReadOnly extends StatelessWidget {
                 style: const TextStyle(
                     color: AppColors.textSecondary, fontSize: 11)),
             Text(value,
-                style: const TextStyle(color: Colors.white, fontSize: 14)),
+                style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
           ]),
         ],
       ),

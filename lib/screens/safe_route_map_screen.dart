@@ -5,6 +5,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../services/location_service.dart';
 import '../services/route_safety_service.dart';
 import '../services/danger_zone_service.dart';
+import '../models/danger_zone_model.dart';
+import '../services/emergency_service.dart';
 import '../utils/constants.dart';
 
 class SafeRouteMapScreen extends StatefulWidget {
@@ -115,6 +117,7 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
       case DangerSeverity.high: return const Color(0xFFF44336);
       case DangerSeverity.medium: return const Color(0xFFFF9800);
       case DangerSeverity.low: return const Color(0xFF4CAF50);
+      default: return const Color(0xFF4CAF50);
     }
   }
 
@@ -146,7 +149,7 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 2),
+                       color: AppColors.primary, strokeWidth: 2),
                 ),
               ),
             ),
@@ -224,7 +227,7 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
                     SizedBox(width: 8),
                     Text(
                       'Move map to your destination...',
-                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                     ),
                   ],
                 ),
@@ -252,6 +255,7 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -272,12 +276,7 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
     }
   }
 
-  static const _mapStyle = '''[{"elementType":"geometry","stylers":[{"color":"#212121"}]},
-{"elementType":"labels.icon","stylers":[{"visibility":"off"}]},
-{"elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},
-{"elementType":"labels.text.stroke","stylers":[{"color":"#212121"}]},
-{"featureType":"road","elementType":"geometry","stylers":[{"color":"#2c2c2c"}]},
-{"featureType":"water","elementType":"geometry","stylers":[{"color":"#000000"}]}]''';
+  static const _mapStyle = '[]';
 }
 
 class _SafePlaceBtn extends StatelessWidget {
@@ -306,7 +305,7 @@ class _SafePlaceBtn extends StatelessWidget {
             Icon(icon, color: AppColors.primary, size: 18),
             const SizedBox(width: 6),
             Text(label,
-                style: const TextStyle(color: Colors.white, fontSize: 12)),
+                style: const TextStyle(color: AppColors.textPrimary, fontSize: 12)),
           ],
         ),
       ),

@@ -53,7 +53,7 @@ class RiskAlertScreen extends StatelessWidget {
                   Text(
                     'Composite Risk Score: ${risk.compositeScore.toStringAsFixed(1)}/10',
                     style: const TextStyle(
-                        color: Colors.white70, fontSize: 14),
+                        color: AppColors.textSecondary, fontSize: 14),
                   ),
                   const SizedBox(height: 16),
                   // Score bar
@@ -61,7 +61,7 @@ class RiskAlertScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     child: LinearProgressIndicator(
                       value: risk.compositeScore / 10,
-                      backgroundColor: Colors.white12,
+                      backgroundColor: Colors.grey.shade200,
                       valueColor:
                           AlwaysStoppedAnimation<Color>(riskColor),
                       minHeight: 10,
@@ -75,7 +75,7 @@ class RiskAlertScreen extends StatelessWidget {
             if (risk.alerts.isNotEmpty) ...[
               const Text('Risk Factors',
                   style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 18,
                       fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
@@ -85,7 +85,7 @@ class RiskAlertScreen extends StatelessWidget {
             // AI Predictive analysis
             const Text('AI Predictive Analysis',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 12),
@@ -94,6 +94,14 @@ class RiskAlertScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,13 +124,13 @@ class RiskAlertScreen extends StatelessWidget {
                           crossAxisAlignment:
                               CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.circle,
-                                size: 6, color: Colors.white54),
+                            Icon(Icons.circle,
+                                size: 6, color: AppColors.textSecondary.withOpacity(0.5)),
                             const SizedBox(width: 8),
                             Expanded(
                                 child: Text(f,
                                     style: const TextStyle(
-                                        color: Colors.white70,
+                                        color: AppColors.textSecondary,
                                         fontSize: 13))),
                           ],
                         ),
@@ -131,7 +139,7 @@ class RiskAlertScreen extends StatelessWidget {
                     const Text(
                       'No significant risk factors detected currently.',
                       style:
-                          TextStyle(color: Colors.white54, fontSize: 13),
+                          TextStyle(color: AppColors.textSecondary, fontSize: 13),
                     ),
                 ],
               ),
@@ -198,7 +206,7 @@ class _AlertTile extends StatelessWidget {
           Expanded(
               child: Text(alert,
                   style:
-                      const TextStyle(color: Colors.white70, fontSize: 13))),
+                      const TextStyle(color: AppColors.textSecondary, fontSize: 13))),
         ],
       ),
     );

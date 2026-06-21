@@ -12,6 +12,9 @@ import '../services/sms_service.dart';
 import '../services/live_stream_service.dart';
 import '../services/user_service.dart';
 import '../services/offline_emergency_service.dart';
+import '../services/guardian_network_service.dart';
+import '../services/background_sos_service.dart';
+import '../services/mesh_relay_service.dart';
 import '../models/emergency_model.dart';
 import '../utils/constants.dart';
 
@@ -70,6 +73,9 @@ class _SafeWalkScreenState extends State<SafeWalkScreen> {
       streamService: context.read<LiveStreamService>(),
       userService: context.read<UserService>(),
       offlineService: context.read<OfflineEmergencyService>(),
+      guardianNetworkService: context.read<GuardianNetworkService>(),
+      meshRelayService: context.read<MeshRelayService>(),
+      backgroundSosService: context.read<BackgroundSosService>(),
     );
     if (mounted) {
       Navigator.pushNamedAndRemoveUntil(
@@ -125,7 +131,7 @@ class _SafeWalkScreenState extends State<SafeWalkScreen> {
                   Text(
                     'Safe Walk',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 22,
                         fontWeight: FontWeight.w600),
                   ),
@@ -160,7 +166,7 @@ class _SafeWalkScreenState extends State<SafeWalkScreen> {
                 child: Text(
                   _formatTime(_remainingSeconds),
                   style: TextStyle(
-                    color: _isActive ? AppColors.safe : Colors.white54,
+                    color: _isActive ? AppColors.safe : AppColors.textSecondary,
                     fontSize: 48,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'Poppins',
@@ -173,7 +179,7 @@ class _SafeWalkScreenState extends State<SafeWalkScreen> {
             if (!_isActive) ...[
               Text(
                 'Walk Duration: ${_formatTime(_remainingSeconds)}',
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
               ),
               Slider(
                 value: _remainingSeconds.toDouble(),
@@ -215,6 +221,7 @@ class _SafeWalkScreenState extends State<SafeWalkScreen> {
             const SizedBox(height: 24),
           ],
         ),
+      ),
       ),
     );
   }

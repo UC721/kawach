@@ -45,27 +45,17 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _signIn() async {
-    debugPrint('LoginScreen: _signIn triggered');
     if (!_formKey.currentState!.validate()) {
-      debugPrint('LoginScreen: Form validation failed');
       return;
     }
     setState(() { _loading = true; _errorMsg = null; });
     try {
       final auth = context.read<AuthService>();
-      debugPrint('LoginScreen: Calling signInWithEmail');
       final uid = await auth.signInWithEmail(
           _emailCtrl.text.trim(), _passCtrl.text.trim());
-      debugPrint('LoginScreen: signInWithEmail returned $uid');
       if (uid != null && mounted) {
-        debugPrint('LoginScreen: Loading user data');
         await context.read<UserService>().loadCurrentUser(uid);
-        // debugPrint('LoginScreen: Saving FCM token'); // removed FCM
-        // await context.read<NotificationService>().saveFcmToken(uid); // removed FCM
-        debugPrint('LoginScreen: Navigating to Dashboard');
         Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
-      } else {
-        debugPrint('LoginScreen: uid was null or widget not mounted');
       }
     } catch (e, stack) {
       debugPrint('LoginScreen: _signIn error caught: $e\nStacktrace: $stack');
@@ -76,18 +66,14 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _signUp() async {
-    debugPrint('LoginScreen: _signUp triggered');
     if (!_formKey.currentState!.validate()) {
-      debugPrint('LoginScreen: Form validation failed');
       return;
     }
     setState(() { _loading = true; _errorMsg = null; });
     try {
       final auth = context.read<AuthService>();
-      debugPrint('LoginScreen: Calling signUpWithEmail');
       final uid = await auth.signUpWithEmail(
           _emailCtrl.text.trim(), _passCtrl.text.trim());
-      debugPrint('LoginScreen: signUpWithEmail returned $uid');
       if (uid != null && mounted) {
         final user = UserModel(
           userId: uid,
@@ -97,14 +83,8 @@ class _LoginScreenState extends State<LoginScreen>
           emergencyProfile: const EmergencyProfileModel(bloodType: 'O+'),
           createdAt: DateTime.now(),
         );
-        debugPrint('LoginScreen: Creating User in DB');
         await context.read<UserService>().createUser(user);
-        // debugPrint('LoginScreen: Saving FCM Token');
-        // await context.read<NotificationService>().saveFcmToken(user.userId);
-        debugPrint('LoginScreen: Navigating to Dashboard');
         Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
-      } else {
-        debugPrint('LoginScreen: uid was null or widget not mounted');
       }
     } catch (e, stack) {
       debugPrint('LoginScreen: _signUp error caught: $e\nStacktrace: $stack');
@@ -123,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen>
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A0808), Color(0xFF0D0D0D)],
+            colors: [Color(0xFFFFF0F0), AppColors.background],
           ),
         ),
         child: SafeArea(
@@ -157,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen>
                           style: TextStyle(
                             fontSize: 36,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             letterSpacing: 6,
                           ),
                         ),
@@ -184,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen>
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      labelColor: Colors.white,
+                      labelColor: Colors.white,  // White on red primary tab indicator
                       unselectedLabelColor: AppColors.textSecondary,
                       dividerColor: Colors.transparent,
                       tabs: const [
@@ -251,7 +231,7 @@ class _LoginScreenState extends State<LoginScreen>
                               width: 24,
                               height: 24,
                               child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2.5),
+                                  color: Colors.white, strokeWidth: 2.5),  // White on primary button
                             )
                           : Text(
                               _tabController.index == 0
@@ -358,7 +338,7 @@ class _LoginScreenState extends State<LoginScreen>
       controller: controller,
       keyboardType: keyboardType,
       obscureText: obscure,
-      style: const TextStyle(color: Colors.white),
+      style: const TextStyle(color: AppColors.textPrimary),
       validator: validator,
       decoration: InputDecoration(
         labelText: label,

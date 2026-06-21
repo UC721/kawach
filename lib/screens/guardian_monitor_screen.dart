@@ -95,7 +95,6 @@ class _GuardianMonitorScreenState extends State<GuardianMonitorScreen> {
                         }
                       : {},
                   onMapCreated: (c) => _mapController = c,
-                  style: _darkMapStyle,
                 );
               },
             ),
@@ -104,11 +103,6 @@ class _GuardianMonitorScreenState extends State<GuardianMonitorScreen> {
       ),
     );
   }
-
-  static const _darkMapStyle = '''[{"elementType":"geometry","stylers":[{"color":"#212121"}]},
-{"elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},
-{"featureType":"road","elementType":"geometry","stylers":[{"color":"#2c2c2c"}]},
-{"featureType":"water","elementType":"geometry","stylers":[{"color":"#000000"}]}]''';
 }
 
 class _SafeBanner extends StatelessWidget {
@@ -160,7 +154,7 @@ class _EmergencyBanner extends StatelessWidget {
           Text(
             'Triggered by: ${emergency.triggeredBy.name.toUpperCase()}  •  '
             '${emergency.createdAt.hour}:${emergency.createdAt.minute.toString().padLeft(2, "0")}',
-            style: const TextStyle(color: Colors.white60, fontSize: 12),
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
           if (emergency.livestreamUrl != null) ...[
             const SizedBox(height: 6),

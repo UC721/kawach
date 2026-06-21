@@ -30,7 +30,9 @@ class NotificationService extends ChangeNotifier {
         iOS: iosInit,
       );
 
-      await _localNotifications.initialize(settings: initSettings);
+      await _localNotifications.initialize(
+        settings: initSettings,
+      );
     }
 
     // Removed FirebaseMessaging listeners

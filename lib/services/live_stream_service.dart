@@ -33,9 +33,9 @@ class LiveStreamService extends ChangeNotifier {
     await _db
         .from(FSCollection.emergencies)
         .update({
-      'livestreamUrl': _streamUrl,
-      'streamStartedAt': DateTime.now().toIso8601String(),
-    }).eq('emergencyId', emergencyId);
+      'livestream_url': _streamUrl,
+      'stream_started_at': DateTime.now().toIso8601String(),
+    }).eq('emergency_id', emergencyId);
   }
 
   // ── Stop stream ──────────────────────────────────────────────
@@ -52,9 +52,9 @@ class LiveStreamService extends ChangeNotifier {
   Future<String?> getStreamUrlForEmergency(String emergencyId) async {
     final res = await _db
         .from(FSCollection.emergencies)
-        .select('livestreamUrl')
-        .eq('emergencyId', emergencyId)
+        .select('livestream_url')
+        .eq('emergency_id', emergencyId)
         .maybeSingle();
-    return res?['livestreamUrl'] as String?;
+    return res?['livestream_url'] as String?;
   }
 }

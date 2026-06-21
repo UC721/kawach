@@ -10,6 +10,7 @@ import '../services/danger_zone_service.dart';
 import '../models/danger_zone_model.dart';
 import '../utils/constants.dart';
 import '../widgets/danger_warning_banner.dart';
+import '../services/emergency_service.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -261,7 +262,7 @@ class _MapScreenState extends State<MapScreen> {
                 : _userLocation == null
                     ? const Center(
                         child: Text('Unable to get location',
-                            style: TextStyle(color: Colors.white)))
+                            style: TextStyle(color: AppColors.textSecondary)))
                     : Stack(
                         children: [
                             GoogleMap(
@@ -339,7 +340,7 @@ class _MapScreenState extends State<MapScreen> {
                           if (_isCalculating)
                             const Center(
                               child: Card(
-                                color: Colors.black87,
+                                color: AppColors.surface,
                                 child: Padding(
                                   padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                                   child: Row(
@@ -351,7 +352,7 @@ class _MapScreenState extends State<MapScreen> {
                                         child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.safe),
                                       ),
                                       SizedBox(width: 16),
-                                      Text('Calculating safest path...', style: TextStyle(color: Colors.white)),
+                                      Text('Calculating safest path...', style: TextStyle(color: AppColors.textPrimary)),
                                     ],
                                   ),
                                 ),
@@ -369,6 +370,7 @@ class _MapScreenState extends State<MapScreen> {
             Navigator.pushNamed(context, AppRoutes.safeRouteMap),
         icon: const Icon(Icons.navigation_outlined),
         label: const Text('Safe Route'),
+      ),
       ),
     );
   }
@@ -388,14 +390,14 @@ class _MapScreenState extends State<MapScreen> {
       ),
       child: TextField(
         controller: _searchCtrl,
-        style: const TextStyle(color: Colors.white),
+        style: const TextStyle(color: AppColors.textPrimary),
         decoration: InputDecoration(
           hintText: 'Move map or tap to set destination',
-          hintStyle: const TextStyle(color: Colors.white54, fontSize: 13),
+          hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
           prefixIcon: const Icon(Icons.search, color: AppColors.primary),
           suffixIcon: _destination != null 
               ? IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white54),
+                  icon: const Icon(Icons.close, color: AppColors.textSecondary),
                   onPressed: () {
                     setState(() {
                       _destination = null;
@@ -434,12 +436,7 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  static const _mapStyle = '''[{"elementType":"geometry","stylers":[{"color":"#212121"}]},
-{"elementType":"labels.icon","stylers":[{"visibility":"off"}]},
-{"elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},
-{"elementType":"labels.text.stroke","stylers":[{"color":"#212121"}]},
-{"featureType":"road","elementType":"geometry","stylers":[{"color":"#2c2c2c"}]},
-{"featureType":"water","elementType":"geometry","stylers":[{"color":"#000000"}]}]''';
+  static const _mapStyle = '[]';
 
   @override
   void dispose() {
@@ -464,7 +461,7 @@ class _LegendItem extends StatelessWidget {
                 BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
         Text(label,
-            style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
       ],
     );
   }

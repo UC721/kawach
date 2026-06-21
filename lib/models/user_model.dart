@@ -25,7 +25,9 @@ class UserModel {
       name: data['name'] ?? '',
       phone: data['phone'] ?? '',
       email: data['email'],
-      guardianIds: List<String>.from(data['guardians'] ?? []),
+      guardianIds: List<String>.from(
+        data['guardians'] ?? data['guardian_ids'] ?? const [],
+      ),
       emergencyProfile: (data['emergencyProfile'] ?? data['emergency_profile']) != null
           ? EmergencyProfileModel.fromMap(
               (data['emergencyProfile'] ?? data['emergency_profile']) as Map<String, dynamic>)
@@ -41,6 +43,7 @@ class UserModel {
         'phone': phone,
         'email': email,
         'guardians': guardianIds,
+        'guardian_ids': guardianIds,
         'emergency_profile': emergencyProfile?.toMap(),
         'created_at': createdAt.toIso8601String(),
       };

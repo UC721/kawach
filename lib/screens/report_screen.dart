@@ -1,4 +1,4 @@
-// import 'dart:io';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -136,7 +136,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     child: Text(
                       'Your report contributes to the community safety heatmap and helps warn others.',
                       style:
-                          TextStyle(color: Colors.white70, fontSize: 13),
+                          TextStyle(color: AppColors.textSecondary, fontSize: 13),
                     ),
                   ),
                 ],
@@ -145,14 +145,14 @@ class _ReportScreenState extends State<ReportScreen> {
             const SizedBox(height: 24),
             const Text('Describe the Incident',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 10),
             TextFormField(
               controller: _descCtrl,
               maxLines: 5,
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: AppColors.textPrimary),
               decoration: const InputDecoration(
                 hintText: 'What happened? Where? When?',
                 alignLabelWithHint: true,
@@ -161,7 +161,7 @@ class _ReportScreenState extends State<ReportScreen> {
             const SizedBox(height: 24),
             const Text('Add Photo Evidence (Optional)',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 10),

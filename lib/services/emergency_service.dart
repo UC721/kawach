@@ -1,25 +1,34 @@
 import 'dart:async';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/emergency_model.dart';
 import '../utils/constants.dart';
-import 'location_service.dart';
 import 'audio_service.dart';
+import 'background_sos_service.dart';
 import 'camera_evidence_service.dart';
 import 'evidence_vault_service.dart';
-import 'notification_service.dart';
-import 'sms_service.dart';
+import 'guardian_network_service.dart';
 import 'live_stream_service.dart';
-import 'user_service.dart';
+import 'location_service.dart';
+import 'mesh_relay_service.dart';
+import 'notification_service.dart';
 import 'offline_emergency_service.dart';
+import 'sms_service.dart';
+import 'sos_queue_manager.dart';
+import 'user_service.dart';
 
-/// Central emergency pipeline – all SOS triggers call [triggerEmergency].
 class EmergencyService extends ChangeNotifier {
-  SupabaseClient get _db => Supabase.instance.client;
-  final _uuid = const Uuid();
+  EmergencyService({
+    SosQueueManager? queueManager,
+  }) : _queueManager = queueManager ?? SosQueueManager.instance;
+
+  final SupabaseClient _db = Supabase.instance.client;
+  final Uuid _uuid = const Uuid();
+  final SosQueueManager _queueManager;
 
   EmergencyModel? _activeEmergency;
   bool _isActive = false;
@@ -29,7 +38,16 @@ class EmergencyService extends ChangeNotifier {
   bool get isActive => _isActive;
   bool get stealthMode => _stealthMode;
 
-  // ── TRIGGER EMERGENCY ────────────────────────────────────────
+  Future<void> restoreActiveEmergency() async {
+    final cached = await _queueManager.getCachedActiveEmergency();
+    if (cached == null || cached.status != EmergencyStatus.active) {
+      return;
+    }
+    _activeEmergency = cached;
+    _isActive = true;
+    notifyListeners();
+  }
+
   Future<void> triggerEmergency({
     required EmergencyTrigger trigger,
     required LocationService locationService,
@@ -41,136 +59,152 @@ class EmergencyService extends ChangeNotifier {
     required LiveStreamService streamService,
     required UserService userService,
     required OfflineEmergencyService offlineService,
+    required GuardianNetworkService guardianNetworkService,
+    required MeshRelayService meshRelayService,
+    required BackgroundSosService backgroundSosService,
   }) async {
-    if (_isActive) return; // Prevent duplicate triggers
+    if (_isActive) {
+      return;
+    }
+
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) {
+      _isActive = false;
+      notifyListeners();
+      return;
+    }
+
     _isActive = true;
     _stealthMode = false;
     notifyListeners();
 
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return;
-
-    // 1. Get current location
-    Position? pos;
+    Position? position;
     try {
-      pos = await locationService.getCurrentPosition();
-    } catch (_) {}
+      position = await locationService.getCurrentPosition();
+    } catch (_) {
+      position = null;
+    }
 
-    final lat = pos?.latitude;
-    final lng = pos?.longitude;
-
-    // 2. Create emergency document in Firestore
-    final emergencyId = _uuid.v4();
     final emergency = EmergencyModel(
-      emergencyId: emergencyId,
+      emergencyId: _uuid.v4(),
       userId: userId,
       status: EmergencyStatus.active,
       triggeredBy: trigger,
-      lat: lat,
-      lng: lng,
+      lat: position?.latitude,
+      lng: position?.longitude,
       createdAt: DateTime.now(),
     );
 
     try {
-      await _db
-          .from(FSCollection.emergencies)
-          .insert(emergency.toMap());
-    } catch (e) {
-      // Offline fallback – store locally
+      await _db.from(FSCollection.emergencies).insert(emergency.toMap());
+    } catch (_) {
       await offlineService.saveEmergencyLocally(emergency);
     }
 
     _activeEmergency = emergency;
+    await _queueManager.cacheActiveEmergency(emergency);
     notifyListeners();
 
-    // 3. Start live GPS tracking
-    unawaited(locationService.startTracking(userId, emergencyId));
+    unawaited(
+      backgroundSosService.start(
+        emergencyId: emergency.emergencyId,
+        title: 'KAWACH SOS active',
+        body: 'Live tracking and evidence capture are running',
+      ),
+    );
+    unawaited(locationService.startTracking(userId, emergency.emergencyId));
+    unawaited(
+      _startAudioEvidence(
+        audioService,
+        vaultService,
+        userId,
+        emergency.emergencyId,
+      ),
+    );
+    unawaited(
+      _startVisualEvidence(
+        cameraService,
+        vaultService,
+        userId,
+        emergency.emergencyId,
+      ),
+    );
+    unawaited(streamService.startStream(userId, emergency.emergencyId));
 
-    // 4. Start audio recording & upload
-    unawaited(_startAudioEvidence(
-        audioService, vaultService, userId, emergencyId));
-
-    // 5. Start camera evidence capture
-    unawaited(_startVideoEvidence(
-        cameraService, vaultService, userId, emergencyId));
-
-    // 6. Start live video stream
-    unawaited(streamService.startStream(userId, emergencyId));
-
-    // 7. Send push notifications to guardians
     final guardians = await userService.getGuardians(userId);
-    unawaited(notificationService.notifyGuardians(
-      guardians: guardians,
-      emergencyId: emergencyId,
-      userId: userId,
-      lat: lat,
-      lng: lng,
-    ));
+    final userName = userService.currentUserModel?.name ?? 'User';
 
-    // 8. SMS backup
-    unawaited(smsService.sendEmergencySms(
-      guardians: guardians,
-      lat: lat,
-      lng: lng,
-      userName: userService.currentUserModel?.name ?? 'User',
-    ));
+    unawaited(
+      notificationService.notifyGuardians(
+        guardians: guardians,
+        emergencyId: emergency.emergencyId,
+        userId: userId,
+        lat: emergency.lat,
+        lng: emergency.lng,
+      ),
+    );
+    unawaited(
+      smsService.sendEmergencySms(
+        guardians: guardians,
+        lat: emergency.lat,
+        lng: emergency.lng,
+        userName: userName,
+      ),
+    );
 
-    // 9. Auto-activate stealth mode after 5s
-    Timer(const Duration(seconds: 5), () {
-      activateStealthMode();
-    });
+    if (emergency.lat != null && emergency.lng != null) {
+      unawaited(
+        guardianNetworkService.alertNearbyVolunteers(
+          emergencyId: emergency.emergencyId,
+          userId: userId,
+          userName: userName,
+          lat: emergency.lat!,
+          lng: emergency.lng!,
+        ),
+      );
+    }
+
+    unawaited(
+      meshRelayService.broadcastEmergency(
+        emergency: emergency,
+        userName: userName,
+      ),
+    );
+
+    Timer(const Duration(seconds: 5), activateStealthMode);
   }
 
-  // ── AUDIO EVIDENCE ───────────────────────────────────────────
-  Future<void> _startAudioEvidence(
-    AudioService audioService,
-    EvidenceVaultService vaultService,
-    String userId,
-    String emergencyId,
-  ) async {
-    try {
-      await audioService.startRecording(); // Ignored returned path
-      // Record for 5 minutes then upload
-      await Future.delayed(const Duration(minutes: 5));
-      final audioUrl = await audioService.stopAndUpload(
-          userId: userId, emergencyId: emergencyId);
-      if (audioUrl != null) {
-        await vaultService.saveEvidence(
-            userId: userId,
-            emergencyId: emergencyId,
-            audioUrl: audioUrl);
-        await _db
-            .from(FSCollection.emergencies)
-            .update({'audioUrl': audioUrl})
-            .eq('emergencyId', emergencyId);
-      }
-    } catch (_) {}
+  Future<void> resolveEmergency({
+    required LocationService locationService,
+    required AudioService audioService,
+    required LiveStreamService streamService,
+    required BackgroundSosService backgroundSosService,
+    required MeshRelayService meshRelayService,
+  }) async {
+    if (_activeEmergency == null) {
+      return;
+    }
+
+    final emergencyId = _activeEmergency!.emergencyId;
+
+    await locationService.stopTracking();
+    await audioService.stopRecording();
+    await streamService.stopStream();
+    await backgroundSosService.stop();
+    await meshRelayService.stopRelay();
+
+    await _db.from(FSCollection.emergencies).update({
+      'status': EmergencyStatus.resolved.name,
+      'resolved_at': DateTime.now().toIso8601String(),
+    }).eq('emergency_id', emergencyId);
+
+    await _queueManager.clearCachedActiveEmergency();
+    _activeEmergency = null;
+    _isActive = false;
+    _stealthMode = false;
+    notifyListeners();
   }
 
-  // ── VIDEO EVIDENCE ───────────────────────────────────────────
-  Future<void> _startVideoEvidence(
-    CameraEvidenceService cameraService,
-    EvidenceVaultService vaultService,
-    String userId,
-    String emergencyId,
-  ) async {
-    try {
-      final videoUrl = await cameraService.captureAndUpload(
-          userId: userId, emergencyId: emergencyId);
-      if (videoUrl != null) {
-        await vaultService.saveEvidence(
-            userId: userId,
-            emergencyId: emergencyId,
-            videoUrl: videoUrl);
-        await _db
-            .from(FSCollection.emergencies)
-            .update({'videoUrl': videoUrl})
-            .eq('emergencyId', emergencyId);
-      }
-    } catch (_) {}
-  }
-
-  // ── STEALTH MODE ─────────────────────────────────────────────
   void activateStealthMode() {
     _stealthMode = true;
     notifyListeners();
@@ -181,57 +215,85 @@ class EmergencyService extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── RESOLVE EMERGENCY ────────────────────────────────────────
-  Future<void> resolveEmergency({
-    required LocationService locationService,
-    required AudioService audioService,
-    required LiveStreamService streamService,
-  }) async {
-    if (_activeEmergency == null) return;
-    final emergencyId = _activeEmergency!.emergencyId;
-
-    await locationService.stopTracking();
-    await audioService.stopRecording();
-    await streamService.stopStream();
-
-    await _db
-        .from(FSCollection.emergencies)
-        .update({
-      'status': EmergencyStatus.resolved.name,
-      'resolvedAt': DateTime.now().toIso8601String(),
-    }).eq('emergencyId', emergencyId);
-
-    _activeEmergency = null;
-    _isActive = false;
-    _stealthMode = false;
-    notifyListeners();
-  }
-
-  // ── STREAM ACTIVE EMERGENCY ──────────────────────────────────
   Stream<EmergencyModel?> streamEmergency(String emergencyId) {
     return _db
         .from(FSCollection.emergencies)
-        .stream(primaryKey: ['emergencyId'])
-        .eq('emergencyId', emergencyId)
+        .stream(primaryKey: ['emergency_id'])
+        .eq('emergency_id', emergencyId)
         .map((docs) => docs.isNotEmpty ? EmergencyModel.fromMap(docs.first) : null);
   }
 
-  // ── GUARDIAN VIEW: stream latest active emergency of user ───
   Stream<EmergencyModel?> streamActiveEmergencyForUser(String userId) {
     return _db
         .from(FSCollection.emergencies)
-        .stream(primaryKey: ['emergencyId'])
-        .eq('userId', userId)
+        .stream(primaryKey: ['emergency_id'])
+        .eq('user_id', userId)
         .map((docs) {
-          final activeDocs = docs.where((d) => d['status'] == EmergencyStatus.active.name).toList();
-          activeDocs.sort((a, b) {
-            final dateA = a['created_at'] ?? a['createdAt'];
-            final dateB = b['created_at'] ?? b['createdAt'];
-            return (dateB as String).compareTo(dateA as String);
-          });
-          return activeDocs.isNotEmpty
-              ? EmergencyModel.fromMap(activeDocs.first)
-              : null;
-        });
+      final activeDocs = docs.where((doc) => doc['status'] == EmergencyStatus.active.name).toList();
+      activeDocs.sort((left, right) {
+        final leftDate = left['created_at'] as String? ?? '';
+        final rightDate = right['created_at'] as String? ?? '';
+        return rightDate.compareTo(leftDate);
+      });
+      return activeDocs.isNotEmpty ? EmergencyModel.fromMap(activeDocs.first) : null;
+    });
+  }
+
+  Future<void> _startAudioEvidence(
+    AudioService audioService,
+    EvidenceVaultService vaultService,
+    String userId,
+    String emergencyId,
+  ) async {
+    try {
+      await audioService.startRecording();
+      await Future.delayed(const Duration(minutes: 2));
+      final audioUrl = await audioService.stopAndUpload(
+        userId: userId,
+        emergencyId: emergencyId,
+      );
+      if (audioUrl != null) {
+        await vaultService.saveEvidence(
+          userId: userId,
+          emergencyId: emergencyId,
+          audioUrl: audioUrl,
+        );
+        await _db.from(FSCollection.emergencies).update({
+          'audio_url': audioUrl,
+        }).eq('emergency_id', emergencyId);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _startVisualEvidence(
+    CameraEvidenceService cameraService,
+    EvidenceVaultService vaultService,
+    String userId,
+    String emergencyId,
+  ) async {
+    try {
+      final videoUrl = await cameraService.captureAndUpload(
+        userId: userId,
+        emergencyId: emergencyId,
+      );
+      final photoUrl = await cameraService.capturePhoto(
+        userId: userId,
+        emergencyId: emergencyId,
+      );
+
+      if (videoUrl != null || photoUrl != null) {
+        await vaultService.saveEvidence(
+          userId: userId,
+          emergencyId: emergencyId,
+          videoUrl: videoUrl ?? photoUrl,
+        );
+      }
+
+      if (videoUrl != null) {
+        await _db.from(FSCollection.emergencies).update({
+          'video_url': videoUrl,
+        }).eq('emergency_id', emergencyId);
+      }
+    } catch (_) {}
   }
 }

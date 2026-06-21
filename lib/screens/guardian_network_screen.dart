@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/nearby_alert_model.dart';
+import '../screens/guardian_monitor_screen.dart';
 import '../services/guardian_network_service.dart';
 import '../services/location_service.dart';
 import '../utils/constants.dart';
@@ -88,7 +90,7 @@ class _GuardianNetworkScreenState extends State<GuardianNetworkScreen>
         bottom: TabBar(
           controller: _tabs,
           indicatorColor: AppColors.primary,
-          labelColor: Colors.white,
+          labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.textSecondary,
           tabs: const [
             Tab(text: 'Nearby Volunteers'),
@@ -100,15 +102,19 @@ class _GuardianNetworkScreenState extends State<GuardianNetworkScreen>
         controller: _tabs,
         children: [
           // Nearby volunteers
-          service.nearbyVolunteers.isEmpty
-              ? Center(
+          StreamBuilder<List<NearbyAlertModel>>(
+            stream: service.streamIncomingAlerts(),
+            builder: (_, alertSnap) {
+              final alerts = alertSnap.data ?? const [];
+              if (service.nearbyVolunteers.isEmpty && alerts.isEmpty) {
+                return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(Icons.people_outline,
                           size: 64, color: AppColors.textSecondary),
                       const SizedBox(height: 16),
-                      const Text('No volunteers nearby',
+                      const Text('No volunteers or live SOS nearby',
                           style: TextStyle(
                               color: AppColors.textSecondary, fontSize: 16)),
                       const SizedBox(height: 8),
@@ -117,15 +123,47 @@ class _GuardianNetworkScreenState extends State<GuardianNetworkScreen>
                           child: const Text('Refresh')),
                     ],
                   ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: service.nearbyVolunteers.length,
-                  separatorBuilder: (_, __) =>
-                      const SizedBox(height: 10),
-                  itemBuilder: (_, i) => GuardianTile(
-                      volunteer: service.nearbyVolunteers[i]),
-                ),
+                );
+              }
+
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  if (alerts.isNotEmpty) ...[
+                    const Text(
+                      'Nearby SOS Alerts',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...alerts.map((alert) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _IncomingAlertCard(alert: alert),
+                        )),
+                    const SizedBox(height: 12),
+                  ],
+                  if (service.nearbyVolunteers.isNotEmpty) ...[
+                    const Text(
+                      'Nearby Volunteers',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...service.nearbyVolunteers.map((volunteer) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: GuardianTile(volunteer: volunteer),
+                        )),
+                  ],
+                ],
+              );
+            },
+          ),
           // Join network
           SingleChildScrollView(
             padding: const EdgeInsets.all(24),
@@ -144,7 +182,7 @@ class _GuardianNetworkScreenState extends State<GuardianNetworkScreen>
                     'Join as a volunteer to receive emergency alerts from users near you. '
                     'Your account will be verified before you are visible to others.',
                     style:
-                        TextStyle(color: Colors.white70, fontSize: 13),
+                        TextStyle(color: AppColors.textSecondary, fontSize: 13),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -186,11 +224,70 @@ class _GuardianNetworkScreenState extends State<GuardianNetworkScreen>
     return TextFormField(
       controller: ctrl,
       keyboardType: type,
-      style: const TextStyle(color: Colors.white),
+      style: const TextStyle(color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon:
             Icon(icon, color: AppColors.textSecondary, size: 20),
+      ),
+    );
+  }
+}
+
+class _IncomingAlertCard extends StatelessWidget {
+  const _IncomingAlertCard({required this.alert});
+
+  final NearbyAlertModel alert;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => GuardianMonitorScreen(
+              watchedUserId: alert.userId,
+            ),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.danger.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.danger.withOpacity(0.35)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.sos, color: AppColors.danger, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    alert.userName ?? 'Nearby user needs help',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tap to open live tracking for this SOS',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+          ],
+        ),
       ),
     );
   }

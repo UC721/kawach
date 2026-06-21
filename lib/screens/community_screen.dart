@@ -45,7 +45,7 @@ class CommunityScreen extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Real-time community incident reports near you',
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                   ),
                 ),
               ],
