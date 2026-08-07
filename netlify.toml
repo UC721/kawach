@@ -1,0 +1,16 @@
+[build]
+  publish = "build/web"
+
+# Deploy directory will be supplied via --dir for explicit control.
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+
+# SPA fallback for Flutter web browser routes (non-hash navigation).
+[[redirects]]
+  from = "/"
+  to = "/index.html"
+  status = 200
