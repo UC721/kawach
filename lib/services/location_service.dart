@@ -1,23 +1,29 @@
 import 'dart:async';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/location_update_model.dart';
 import '../utils/constants.dart';
+import 'payload_cipher.dart';
+import 'sos_queue_manager.dart';
 
 class LocationService extends ChangeNotifier {
-  SupabaseClient get _db => Supabase.instance.client;
+  LocationService({
+    SosQueueManager? queueManager,
+  }) : _queueManager = queueManager ?? SosQueueManager.instance;
+
+  final SupabaseClient _db = Supabase.instance.client;
+  final SosQueueManager _queueManager;
 
   Position? _currentPosition;
   StreamSubscription<Position>? _positionStream;
-  Timer? _uploadTimer;
-
   bool _isTracking = false;
 
   Position? get currentPosition => _currentPosition;
   bool get isTracking => _isTracking;
 
-  // ── One-shot location fetch ──────────────────────────────────
   Future<Position> getCurrentPosition() async {
     await _ensurePermission();
     _currentPosition = await Geolocator.getCurrentPosition(
@@ -30,9 +36,12 @@ class LocationService extends ChangeNotifier {
     return _currentPosition!;
   }
 
-  // ── Start live tracking ──────────────────────────────────────
-  Future<void> startTracking(String userId, String emergencyId) async {
+  Future<void> startTracking(
+    String userId,
+    String emergencyId,
+  ) async {
     await _ensurePermission();
+    await stopTracking();
     _isTracking = true;
 
     _positionStream = Geolocator.getPositionStream(
@@ -40,43 +49,26 @@ class LocationService extends ChangeNotifier {
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 5,
       ),
-    ).listen((pos) async {
-      _currentPosition = pos;
+    ).listen((position) async {
+      _currentPosition = position;
       notifyListeners();
-      // Upload to Firestore every 5 seconds
-      await _uploadLocation(userId, emergencyId, pos);
+      await _uploadLocation(
+        userId: userId,
+        emergencyId: emergencyId,
+        position: position,
+      );
     });
 
     notifyListeners();
   }
 
-  Future<void> _uploadLocation(
-      String userId, String emergencyId, Position pos) async {
-    // Update emergency document
-    await _db.from(FSCollection.emergencies).update({
-      'lat': pos.latitude,
-      'lng': pos.longitude,
-      'locationUpdatedAt': DateTime.now().toIso8601String(),
-    }).eq('emergencyId', emergencyId);
-
-    // Update user's live location
-    await _db.from(FSCollection.users).update({
-      'liveLat': pos.latitude,
-      'liveLng': pos.longitude,
-      'liveLocationUpdatedAt': DateTime.now().toIso8601String(),
-    }).eq('userId', userId);
-  }
-
-  // ── Stop tracking ────────────────────────────────────────────
   Future<void> stopTracking() async {
     await _positionStream?.cancel();
     _positionStream = null;
-    _uploadTimer?.cancel();
     _isTracking = false;
     notifyListeners();
   }
 
-  // ── Stream for UI ────────────────────────────────────────────
   Stream<Position> get positionStream => Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
@@ -84,44 +76,97 @@ class LocationService extends ChangeNotifier {
         ),
       );
 
-  // ── Guard live location in Firestore ─────────────────────────
   Stream<Map<String, double>?> streamUserLocation(String userId) {
     return _db
         .from(FSCollection.users)
-        .stream(primaryKey: ['userId'])
-        .eq('userId', userId)
+        .stream(primaryKey: ['user_id'])
+        .eq('user_id', userId)
         .map((docs) {
-          if (docs.isEmpty) return null;
+          if (docs.isEmpty) {
+            return null;
+          }
+
           final doc = docs.first;
-          if (doc['liveLat'] == null || doc['liveLng'] == null) return null;
+          if (doc['live_lat'] == null || doc['live_lng'] == null) {
+            return null;
+          }
+
           return {
-            'lat': (doc['liveLat'] as num).toDouble(),
-            'lng': (doc['liveLng'] as num).toDouble(),
+            'lat': (doc['live_lat'] as num).toDouble(),
+            'lng': (doc['live_lng'] as num).toDouble(),
           };
         });
   }
 
-  // ── Permission ───────────────────────────────────────────────
-  Future<void> _ensurePermission() async {
-    LocationPermission perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) {
-      perm = await Geolocator.requestPermission();
-    }
-    if (perm == LocationPermission.deniedForever) {
-      throw Exception(
-          'Location permission permanently denied. Please enable in settings.');
+  double distanceBetween(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
+    return Geolocator.distanceBetween(lat1, lon1, lat2, lon2);
+  }
+
+  Future<void> _uploadLocation({
+    required String userId,
+    required String emergencyId,
+    required Position position,
+  }) async {
+    final update = LocationUpdateModel(
+      emergencyId: emergencyId,
+      userId: userId,
+      lat: position.latitude,
+      lng: position.longitude,
+      speed: position.speed,
+      heading: position.heading,
+      accuracy: position.accuracy,
+      recordedAt: DateTime.now(),
+      encryptedPayload: PayloadCipher.encryptObject(
+        {
+          'lat': position.latitude,
+          'lng': position.longitude,
+          'speed': position.speed,
+          'heading': position.heading,
+          'accuracy': position.accuracy,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+        scope: emergencyId,
+      ),
+    );
+
+    try {
+      await _db.from(FSCollection.locations).insert(update.toMap());
+      await _db.from(FSCollection.emergencies).update({
+        'lat': position.latitude,
+        'lng': position.longitude,
+        'location_updated_at': DateTime.now().toIso8601String(),
+        'last_location_payload': update.encryptedPayload,
+      }).eq('emergency_id', emergencyId);
+      await _db.from(FSCollection.users).update({
+        'live_lat': position.latitude,
+        'live_lng': position.longitude,
+        'live_location_updated_at': DateTime.now().toIso8601String(),
+      }).eq('user_id', userId);
+    } catch (_) {
+      await _queueManager.enqueueLocation(update);
     }
   }
 
-  double distanceBetween(
-      double lat1, double lon1, double lat2, double lon2) {
-    return Geolocator.distanceBetween(lat1, lon1, lat2, lon2);
+  Future<void> _ensurePermission() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception(
+        'Location permission permanently denied. Please enable in settings.',
+      );
+    }
   }
 
   @override
   void dispose() {
     _positionStream?.cancel();
-    _uploadTimer?.cancel();
     super.dispose();
   }
 }

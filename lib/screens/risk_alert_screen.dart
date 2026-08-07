@@ -34,9 +34,9 @@ class RiskAlertScreen extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: riskColor.withOpacity(0.1),
+                color: riskColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: riskColor.withOpacity(0.4)),
+                border: Border.all(color: riskColor.withValues(alpha: 0.4)),
               ),
               child: Column(
                 children: [
@@ -53,7 +53,7 @@ class RiskAlertScreen extends StatelessWidget {
                   Text(
                     'Composite Risk Score: ${risk.compositeScore.toStringAsFixed(1)}/10',
                     style: const TextStyle(
-                        color: Colors.white70, fontSize: 14),
+                        color: AppColors.textSecondary, fontSize: 14),
                   ),
                   const SizedBox(height: 16),
                   // Score bar
@@ -61,9 +61,8 @@ class RiskAlertScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     child: LinearProgressIndicator(
                       value: risk.compositeScore / 10,
-                      backgroundColor: Colors.white12,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(riskColor),
+                      backgroundColor: Colors.grey.shade200,
+                      valueColor: AlwaysStoppedAnimation<Color>(riskColor),
                       minHeight: 10,
                     ),
                   ),
@@ -75,7 +74,7 @@ class RiskAlertScreen extends StatelessWidget {
             if (risk.alerts.isNotEmpty) ...[
               const Text('Risk Factors',
                   style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 18,
                       fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
@@ -85,7 +84,7 @@ class RiskAlertScreen extends StatelessWidget {
             // AI Predictive analysis
             const Text('AI Predictive Analysis',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 12),
@@ -94,6 +93,14 @@ class RiskAlertScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,16 +120,17 @@ class RiskAlertScreen extends StatelessWidget {
                   ...predictive.riskFactors.map((f) => Padding(
                         padding: const EdgeInsets.only(bottom: 6),
                         child: Row(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.circle,
-                                size: 6, color: Colors.white54),
+                            Icon(Icons.circle,
+                                size: 6,
+                                color: AppColors.textSecondary
+                                    .withValues(alpha: 0.5)),
                             const SizedBox(width: 8),
                             Expanded(
                                 child: Text(f,
                                     style: const TextStyle(
-                                        color: Colors.white70,
+                                        color: AppColors.textSecondary,
                                         fontSize: 13))),
                           ],
                         ),
@@ -130,8 +138,8 @@ class RiskAlertScreen extends StatelessWidget {
                   if (predictive.riskFactors.isEmpty)
                     const Text(
                       'No significant risk factors detected currently.',
-                      style:
-                          TextStyle(color: Colors.white54, fontSize: 13),
+                      style: TextStyle(
+                          color: AppColors.textSecondary, fontSize: 13),
                     ),
                 ],
               ),
@@ -156,14 +164,16 @@ class RiskAlertScreen extends StatelessWidget {
                         .read<LocationService>()
                         .getCurrentPosition();
                     if (context.mounted) {
-                      await context.read<RiskAnalysisService>().analyzeCurrentRisk(
-                        lat: pos.latitude,
-                        lng: pos.longitude,
-                        dangerZoneService:
-                            context.read<DangerZoneService>(),
-                        predictiveService:
-                            context.read<PredictiveDangerService>(),
-                      );
+                      await context
+                          .read<RiskAnalysisService>()
+                          .analyzeCurrentRisk(
+                            lat: pos.latitude,
+                            lng: pos.longitude,
+                            dangerZoneService:
+                                context.read<DangerZoneService>(),
+                            predictiveService:
+                                context.read<PredictiveDangerService>(),
+                          );
                     }
                   } catch (_) {}
                 },
@@ -186,9 +196,9 @@ class _AlertTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.warning.withOpacity(0.1),
+        color: AppColors.warning.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -197,8 +207,8 @@ class _AlertTile extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
               child: Text(alert,
-                  style:
-                      const TextStyle(color: Colors.white70, fontSize: 13))),
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 13))),
         ],
       ),
     );

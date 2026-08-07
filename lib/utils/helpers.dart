@@ -51,8 +51,8 @@ class Helpers {
   static int riskToHue(double score) {
     // 0–4 = green, 4–7 = orange, 7–10 = red
     if (score < 4) return 120; // green hue
-    if (score < 7) return 30;  // orange hue
-    return 0;                  // red hue
+    if (score < 7) return 30; // orange hue
+    return 0; // red hue
   }
 
   // ── Emergency trigger label ──────────────────────────────────

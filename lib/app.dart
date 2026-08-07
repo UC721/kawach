@@ -3,6 +3,12 @@ import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/onboarding_screen.dart';
+import 'screens/emergency_profile_screen.dart';
+import 'screens/guardian_approval_screen.dart';
+import 'screens/incident_history_screen.dart';
+import 'screens/privacy_console_screen.dart';
+import 'screens/sync_status_screen.dart';
 import 'screens/sos_screen.dart';
 import 'screens/map_screen.dart';
 import 'screens/safe_route_map_screen.dart';
@@ -32,6 +38,12 @@ class KawachApp extends StatelessWidget {
       routes: {
         AppRoutes.splash: (_) => const SplashScreen(),
         AppRoutes.login: (_) => const LoginScreen(),
+        AppRoutes.onboarding: (_) => const OnboardingScreen(),
+        AppRoutes.emergencyProfile: (_) => const EmergencyProfileScreen(),
+        AppRoutes.guardianApproval: (_) => const GuardianApprovalScreen(),
+        AppRoutes.incidentHistory: (_) => const IncidentHistoryScreen(),
+        AppRoutes.privacyConsole: (_) => const PrivacyConsoleScreen(),
+        AppRoutes.syncStatus: (_) => const SyncStatusScreen(),
         AppRoutes.dashboard: (_) => const DashboardScreen(),
         AppRoutes.sos: (_) => const SosScreen(),
         AppRoutes.map: (_) => const MapScreen(),
@@ -54,8 +66,8 @@ class KawachApp extends StatelessWidget {
   ThemeData _buildTheme() {
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: const ColorScheme.dark(
+      brightness: Brightness.light,
+      colorScheme: const ColorScheme.light(
         primary: AppColors.primary,
         secondary: AppColors.secondary,
         surface: AppColors.surface,
@@ -63,16 +75,26 @@ class KawachApp extends StatelessWidget {
       ),
       scaffoldBackgroundColor: AppColors.background,
       fontFamily: 'Poppins',
+      splashFactory: InkSparkle.splashFactory,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: <TargetPlatform, PageTransitionsBuilder>{
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.background,
         elevation: 0,
         centerTitle: true,
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
         titleTextStyle: TextStyle(
           fontFamily: 'Poppins',
           fontSize: 20,
           fontWeight: FontWeight.w600,
-          color: Colors.white,
+          color: AppColors.textPrimary,
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -92,9 +114,12 @@ class KawachApp extends StatelessWidget {
       ),
       cardTheme: CardThemeData(
         color: AppColors.surface,
-        elevation: 4,
+        elevation: 3,
+        shadowColor: Colors.black.withValues(alpha: 0.08),
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.cardBorder),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(

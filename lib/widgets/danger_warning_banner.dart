@@ -14,8 +14,7 @@ class DangerWarningBanner extends StatefulWidget {
   });
 
   @override
-  State<DangerWarningBanner> createState() =>
-      _DangerWarningBannerState();
+  State<DangerWarningBanner> createState() => _DangerWarningBannerState();
 }
 
 class _DangerWarningBannerState extends State<DangerWarningBanner>
@@ -58,10 +57,10 @@ class _DangerWarningBannerState extends State<DangerWarningBanner>
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: _bannerColor.withOpacity(0.15 * _anim.value + 0.05),
+          color: _bannerColor.withValues(alpha: 0.15 * _anim.value + 0.05),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-              color: _bannerColor.withOpacity(0.5 * _anim.value)),
+              color: _bannerColor.withValues(alpha: 0.5 * _anim.value)),
         ),
         child: Row(
           children: [
@@ -90,8 +89,8 @@ class _DangerWarningBannerState extends State<DangerWarningBanner>
                     const SizedBox(height: 2),
                     Text(
                       widget.alerts.first,
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 11),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 11),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -99,8 +98,7 @@ class _DangerWarningBannerState extends State<DangerWarningBanner>
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded,
-                color: _bannerColor, size: 20),
+            Icon(Icons.chevron_right_rounded, color: _bannerColor, size: 20),
           ],
         ),
       ),

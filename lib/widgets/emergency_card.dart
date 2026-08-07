@@ -21,9 +21,9 @@ class EmergencyCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.danger.withOpacity(0.1),
+          color: AppColors.danger.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.danger.withOpacity(0.4)),
+          border: Border.all(color: AppColors.danger.withValues(alpha: 0.4)),
         ),
         child: Row(
           children: [
@@ -32,7 +32,7 @@ class EmergencyCard extends StatelessWidget {
               height: 44,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.danger.withOpacity(0.2),
+                color: AppColors.danger.withValues(alpha: 0.2),
               ),
               child: const Icon(Icons.warning_rounded,
                   color: AppColors.danger, size: 24),
@@ -54,8 +54,7 @@ class EmergencyCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     'Triggered by: ${emergency.triggeredBy.name.toUpperCase()}',
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 12),
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                   Text(
                     _formatTime(emergency.createdAt),

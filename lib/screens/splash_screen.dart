@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../services/auth_service.dart';
+import '../services/emergency_service.dart';
 import '../services/offline_emergency_service.dart';
+import '../services/onboarding_service.dart';
 import '../utils/constants.dart';
+import '../widgets/immersive_ui.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,78 +18,61 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  late AnimationController _logoController;
-  late AnimationController _textController;
-  late Animation<double> _logoScale;
-  late Animation<double> _logoOpacity;
-  late Animation<double> _textOpacity;
-  late Animation<Offset> _textSlide;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+  late AnimationController _spinController;
 
   @override
   void initState() {
     super.initState();
+    _pulseController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 2000))
+      ..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 0.9, end: 1.1).animate(
+        CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+    _fadeController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1500))
+      ..forward();
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
+    // Slow orbital spin for the 3D shield rings.
+    _spinController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 9000))
+      ..repeat();
 
-    _logoController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-    _textController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-
-    _logoScale = Tween<double>(begin: 0.4, end: 1.0).animate(
-      CurvedAnimation(parent: _logoController, curve: Curves.elasticOut),
-    );
-    _logoOpacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _logoController, curve: Curves.easeIn),
-    );
-    _textOpacity = Tween<double>(begin: 0, end: 1).animate(_textController);
-    _textSlide = Tween<Offset>(
-      begin: const Offset(0, 0.5),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _textController, curve: Curves.easeOutCubic),
-    );
-
-    _logoController.forward();
-    Future.delayed(const Duration(milliseconds: 700), () {
-      _textController.forward();
-    });
-
-    // Initialize offline sync
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context
-          .read<OfflineEmergencyService>()
-          .listenForConnectivity();
+      context.read<OfflineEmergencyService>().listenForConnectivity();
+      context.read<EmergencyService>().restoreActiveEmergency();
+      context.read<OnboardingService>().load();
+      if (context.read<OfflineEmergencyService>().lastSyncedAt == null) {
+        context.read<OfflineEmergencyService>().restoreSyncState();
+      }
     });
-
-    // Navigate after 2.5 seconds
-    debugPrint('--- KAWACH: SplashScreen: Starting navigation timer ---');
-    Timer(const Duration(milliseconds: 2500), _navigate);
+    Timer(const Duration(milliseconds: 3000), _navigate);
   }
 
   void _navigate() {
-    debugPrint('--- KAWACH: SplashScreen: _navigate called ---');
-    if (!mounted) {
-      debugPrint('--- KAWACH: SplashScreen: NOT mounted, aborting navigation ---');
+    if (!mounted) return;
+    final emergency = context.read<EmergencyService>();
+    if (emergency.isActive) {
+      Navigator.pushReplacementNamed(context, AppRoutes.emergencyDashboard);
       return;
     }
-    final auth = context.read<AuthService>();
-    debugPrint('--- KAWACH: SplashScreen: Checking authentication status... ---');
-    if (auth.isAuthenticated) {
-      debugPrint('--- KAWACH: SplashScreen: Authenticated, navigating to Dashboard ---');
-      Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
-    } else {
-      debugPrint('--- KAWACH: SplashScreen: NOT authenticated, navigating to Login ---');
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
+    final onboarding = context.read<OnboardingService>();
+    if (!onboarding.isComplete) {
+      Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
+      return;
     }
+    Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
   }
 
   @override
   void dispose() {
-    _logoController.dispose();
-    _textController.dispose();
+    _pulseController.dispose();
+    _fadeController.dispose();
+    _spinController.dispose();
     super.dispose();
   }
 
@@ -94,162 +80,131 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment.center,
-            radius: 1.2,
-            colors: [Color(0xFF1A0A0A), Color(0xFF0D0D0D)],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Spacer(flex: 2),
-              // Shield Logo
-              AnimatedBuilder(
-                animation: _logoController,
-                builder: (_, __) => Transform.scale(
-                  scale: _logoScale.value,
-                  child: Opacity(
-                    opacity: _logoOpacity.value,
-                    child: _buildShieldLogo(),
+      body: AmbientBackground(
+        child: Center(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TiltCard(
+                  maxTilt: 0.22,
+                  child: AnimatedBuilder(
+                    animation: _pulseAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _pulseAnimation.value,
+                        child: _buildShield(),
+                      );
+                    },
                   ),
                 ),
-              ),
-              const SizedBox(height: 32),
-              // App name
-              SlideTransition(
-                position: _textSlide,
-                child: FadeTransition(
-                  opacity: _textOpacity,
-                  child: Column(
-                    children: [
-                      Text(
-                        AppStrings.appName,
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 52,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Poppins',
-                          letterSpacing: 8,
-                          shadows: [
-                            Shadow(
-                              color: AppColors.primary.withOpacity(0.8),
-                              blurRadius: 20,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        AppStrings.tagline,
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w400,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const Spacer(flex: 3),
-              // Loading dots
-              FadeTransition(
-                opacity: _textOpacity,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    3,
-                    (i) => _PulseDot(delay: Duration(milliseconds: i * 200)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 40),
-            ],
+                const SizedBox(height: 48),
+                const Text('KAWACH',
+                    style: TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                        letterSpacing: 10)),
+                const SizedBox(height: 12),
+                const Text('Your Shield. Always.',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 4)),
+                const SizedBox(height: 60),
+                SizedBox(
+                    width: 30,
+                    height: 30,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary.withValues(alpha: 0.4))),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildShieldLogo() {
+  /// 3D shield: layered rings + a glossy core to fake volume without meshes.
+  Widget _buildShield() {
     return Container(
-      width: 140,
-      height: 140,
+      width: 132,
+      height: 132,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [
-            AppColors.primary.withOpacity(0.3),
-            AppColors.primary.withOpacity(0.05),
-          ],
-        ),
+        gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFE53935), Color(0xFF9C27B0)]),
+        border:
+            Border.all(color: Colors.white.withValues(alpha: 0.7), width: 2),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.4),
-            blurRadius: 40,
-            spreadRadius: 10,
+            color: const Color(0xFFE53935).withValues(alpha: 0.45),
+            blurRadius: 48,
+            spreadRadius: 8,
           ),
         ],
       ),
-      child: const Icon(
-        Icons.security_rounded,
-        size: 80,
-        color: Color(0xFFE53935),
+      child: AnimatedBuilder(
+        animation: _spinController,
+        builder: (context, child) {
+          final t = _spinController.value;
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              // Orbiting highlight arc, gives the "glossy sphere" illusion.
+              CustomPaint(
+                painter: _OrbitGlowPainter(t: t),
+                child: const SizedBox.expand(),
+              ),
+              const Icon(Icons.security_rounded, size: 62, color: Colors.white),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-class _PulseDot extends StatefulWidget {
-  final Duration delay;
-  const _PulseDot({required this.delay});
+/// Paints an orbiting specular highlight so the shield core reads as a glossy
+/// 3D sphere rather than a flat circle.
+class _OrbitGlowPainter extends CustomPainter {
+  _OrbitGlowPainter({required this.t});
+  final double t;
 
   @override
-  State<_PulseDot> createState() => _PulseDotState();
-}
-
-class _PulseDotState extends State<_PulseDot>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _c;
-  late Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(
-      duration: const Duration(milliseconds: 900),
-      vsync: this,
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2;
+    final angle = t * 3.141592653589793 * 2;
+    // Small bright specular dot orbiting just inside the rim.
+    final dot = Offset(
+      center.dx + radius * 0.72 * math.cos(angle),
+      center.dy + radius * 0.72 * math.sin(angle),
     );
-    _anim = Tween<double>(begin: 0.3, end: 1.0).animate(_c);
-    Future.delayed(widget.delay, () {
-      if (mounted) _c.repeat(reverse: true);
-    });
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (_, __) => Container(
-        width: 8,
-        height: 8,
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppColors.primary.withOpacity(_anim.value),
-        ),
-      ),
+    final dotPaint = Paint()
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+    canvas.drawCircle(
+      dot,
+      10,
+      dotPaint..color = Colors.white.withValues(alpha: 0.28),
+    );
+    // A faint secondary counter-orbit opposite it.
+    final dot2 = Offset(
+      center.dx - radius * 0.55 * math.cos(angle),
+      center.dy - radius * 0.55 * math.sin(angle),
+    );
+    canvas.drawCircle(
+      dot2,
+      6,
+      dotPaint..color = Colors.white.withValues(alpha: 0.16),
     );
   }
+
+  @override
+  bool shouldRepaint(covariant _OrbitGlowPainter old) => old.t != t;
 }

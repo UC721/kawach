@@ -1,21 +1,12 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../services/user_service.dart';
-import '../services/location_service.dart';
-import '../services/emergency_service.dart';
-import '../services/risk_analysis_service.dart';
-import '../services/danger_zone_service.dart';
-import '../services/predictive_danger_service.dart';
-import '../services/shake_service.dart';
-import '../services/panic_detection_service.dart';
-import '../services/motion_detection_service.dart';
-import '../services/voice_service.dart';
-import '../services/notification_service.dart';
+import '../services/siren_service.dart';
 import '../utils/constants.dart';
-import '../widgets/sos_button.dart';
-import '../widgets/danger_warning_banner.dart';
+import '../widgets/immersive_ui.dart';
+import '../widgets/real_map.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -24,330 +15,938 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  Timer? _riskTimer;
-  bool _isInitializing = true;
+class _DashboardScreenState extends State<DashboardScreen>
+    with TickerProviderStateMixin {
+  int _currentTab = 0;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  late AnimationController _glowController;
+  late Animation<double> _glowAnimation;
 
   @override
   void initState() {
     super.initState();
-    _initApp();
-  }
-
-  Future<void> _initApp() async {
-    final auth = context.read<UserService>();
-    // Ensure user data is loaded if coming from a cold start
-    if (auth.currentUserModel == null) {
-      // For demo purposes, we use the mock ID
-      await auth.loadCurrentUser('mock_user_123');
-    }
-    
-    await _initializeServices();
-    if (mounted) setState(() => _isInitializing = false);
-  }
-
-  Future<void> _initializeServices() async {
-    try {
-      await context.read<NotificationService>().initialize();
-      await context.read<DangerZoneService>().loadDangerZones();
-      
-      // IMPORTANT: Initialize Voice Service for panic phrase detection
-      await context.read<VoiceService>().initialize();
-
-      // Start shake detection
-      context.read<ShakeService>().startListening(onShake: _onShakeDetected);
-
-      // Start panic detection (voice + motion)
-      context.read<PanicDetectionService>().startDetection(
-        voiceService: context.read<VoiceService>(),
-        motionService: context.read<MotionDetectionService>(),
-        onPanicDetected: _onPanicDetected,
-      );
-
-      _startRiskAnalysis();
-    } catch (e) {
-      debugPrint('Error initializing services: $e');
-    }
-  }
-
-  void _startRiskAnalysis() {
-    _riskTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
-      try {
-        final pos = await context.read<LocationService>().getCurrentPosition();
-        if (!mounted) return;
-        await context.read<RiskAnalysisService>().analyzeCurrentRisk(
-          lat: pos.latitude,
-          lng: pos.longitude,
-          dangerZoneService: context.read<DangerZoneService>(),
-          predictiveService: context.read<PredictiveDangerService>(),
-        );
-      } catch (_) {}
-    });
-  }
-
-  void _onShakeDetected() {
-    if (context.read<EmergencyService>().isActive) return;
-    Navigator.pushNamed(context, AppRoutes.sos);
-  }
-
-  void _onPanicDetected(String reason) {
-    if (context.read<EmergencyService>().isActive) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('⚠️ $reason – Triggering SOS...'),
-        backgroundColor: AppColors.danger,
-        duration: const Duration(seconds: 2),
-      ),
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.12).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) Navigator.pushNamed(context, AppRoutes.sos);
-    });
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    )..repeat(reverse: true);
+    _glowAnimation = Tween<double>(begin: 0.3, end: 0.8).animate(
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
-    _riskTimer?.cancel();
+    _pulseController.dispose();
+    _glowController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isInitializing) {
-      return const Scaffold(
-        backgroundColor: AppColors.background,
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-      );
-    }
-
-    final user = context.watch<UserService>().currentUserModel;
-    final riskAnalysis = context.watch<RiskAnalysisService>();
-    final emergency = context.watch<EmergencyService>();
-
-    if (emergency.stealthMode) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.stealthMode, (_) => false);
-      });
-    }
-
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: RefreshIndicator(
-        onRefresh: _initializeServices,
-        child: CustomScrollView(
-          slivers: [
-            _buildAppBar(user?.name ?? 'User'),
-            SliverToBoxAdapter(
-              child: Column(
-                children: [
-                  if (riskAnalysis.shouldWarn)
-                    DangerWarningBanner(
-                      riskLevel: riskAnalysis.riskLevel,
-                      alerts: riskAnalysis.alerts,
-                    ),
-                  const SizedBox(height: 24),
-                  SosButton(
-                    onActivate: () => Navigator.pushNamed(context, AppRoutes.sos),
-                  ),
-                  const SizedBox(height: 32),
-                  _buildQuickActions(),
-                  const SizedBox(height: 24),
-                  _buildStatusRow(riskAnalysis),
-                  const SizedBox(height: 32),
-                ],
+      body: Stack(
+        children: [
+          const AmbientBackground(dark: false),
+          IndexedStack(
+            index: _currentTab,
+            children: [
+              _HomeTab(
+                pulseAnimation: _pulseAnimation,
+                glowAnimation: _glowAnimation,
+                onSwitchToMap: () => setState(() => _currentTab = 1),
               ),
-            ),
-          ],
-        ),
+              _SafetyMapTab(),
+              const SizedBox(),
+              _CommunityTab(),
+              _ProfileTab(),
+            ],
+          ),
+        ],
       ),
+      floatingActionButton: _buildSosFAB(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: _buildBottomNav(),
     );
   }
 
-  SliverAppBar _buildAppBar(String name) {
-    return SliverAppBar(
-      expandedHeight: 120,
-      pinned: true,
-      backgroundColor: AppColors.background,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.primary.withOpacity(0.2), AppColors.background],
+  Widget _buildSosFAB() {
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        return TiltCard(
+          maxTilt: 0.2,
+          onTap: () => Navigator.pushNamed(context, AppRoutes.sos),
+          borderRadius: 68,
+          elevation: 26,
+          child: Transform.scale(
+            scale: _pulseAnimation.value,
+            child: Container(
+              width: 68,
+              height: 68,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFFF1744), Color(0xFFD50000)],
+                ),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.35), width: 2),
+              ),
+              child: const Center(
+                child: Text('SOS',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5)),
+              ),
             ),
           ),
-          padding: const EdgeInsets.fromLTRB(20, 56, 20, 0),
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, -4))
+        ],
+      ),
+      child: BottomAppBar(
+        color: Colors.transparent,
+        elevation: 0,
+        notchMargin: 8,
+        shape: const CircularNotchedRectangle(),
+        child: SizedBox(
+          height: 60,
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Hello, ${name.split(' ').first} 👋',
-                    style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w600),
-                  ),
-                  const Text('Stay safe today', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-                ],
-              ),
-              GestureDetector(
-                onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
-                child: CircleAvatar(
-                  radius: 22,
-                  backgroundColor: AppColors.primary.withOpacity(0.2),
-                  child: Text(
-                    (name.isNotEmpty ? name[0] : 'U').toUpperCase(),
-                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 18),
-                  ),
+              _navItem(Icons.home_rounded, 'Home', 0),
+              _navItem(Icons.map_outlined, 'Map', 1),
+              const SizedBox(width: 48),
+              _navItem(Icons.people_outlined, 'Community', 3),
+              _navItem(Icons.person_outlined, 'Profile', 4),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navItem(IconData icon, String label, int index) {
+    final isActive = _currentTab == index;
+    return GestureDetector(
+      onTap: () => setState(() => _currentTab = index),
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 64,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon,
+                color: isActive ? AppColors.primary : Colors.grey.shade400,
+                size: 24),
+            const SizedBox(height: 4),
+            Text(label,
+                style: TextStyle(
+                    color: isActive ? AppColors.primary : Colors.grey.shade400,
+                    fontSize: 10,
+                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w400)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// HOME TAB
+// ═══════════════════════════════════════════════
+class _HomeTab extends StatelessWidget {
+  final Animation<double> pulseAnimation;
+  final Animation<double> glowAnimation;
+  final VoidCallback onSwitchToMap;
+  const _HomeTab({
+    required this.pulseAnimation,
+    required this.glowAnimation,
+    required this.onSwitchToMap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<UserService>().currentUserModel;
+    final name = user?.name ?? 'User';
+    return SafeArea(
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(context, name),
+            const SizedBox(height: 20),
+            _buildStatusCard(),
+            const SizedBox(height: 16),
+            _buildQuickActions(context),
+            const SizedBox(height: 24),
+            _buildSafetyMapPreview(context),
+            const SizedBox(height: 16),
+            _buildFeatureGrid(context),
+            const SizedBox(height: 20),
+            _buildRecentActivity(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, String name) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Hello, ${name.split(' ').first} 👋',
+                  style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.5)),
+              const SizedBox(height: 4),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00C853).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: const Color(0xFF00C853).withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.shield_rounded,
+                        size: 14, color: Color(0xFF00C853)),
+                    SizedBox(width: 4),
+                    Text('Protection Active',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF00C853),
+                            fontWeight: FontWeight.w600)),
+                  ],
                 ),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActions() {
-    final actions = [
-      const _QuickAction(icon: Icons.map_outlined, label: 'Safe Map', color: Color(0xFF1565C0), route: AppRoutes.map),
-      const _QuickAction(icon: Icons.directions_walk, label: 'Safe Walk', color: Color(0xFF2E7D32), route: AppRoutes.safeWalk),
-      const _QuickAction(icon: Icons.phone_in_talk_outlined, label: 'Fake Call', color: Color(0xFF6A1B9A), route: AppRoutes.fakeCall),
-      const _QuickAction(icon: Icons.people_outline, label: 'Guardians', color: Color(0xFFE65100), route: AppRoutes.guardianNetwork),
-      const _QuickAction(icon: Icons.report_problem_outlined, label: 'Report', color: Color(0xFFAD1457), route: AppRoutes.report),
-      const _QuickAction(icon: Icons.forum_outlined, label: 'Community', color: Color(0xFF00695C), route: AppRoutes.community),
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: GridView.count(
-        crossAxisCount: 3,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.1,
-        children: actions.map((a) => _QuickActionCard(action: a)).toList(),
-      ),
-    );
-  }
-
-  Widget _buildStatusRow(RiskAnalysisService risk) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          Expanded(
-            child: _StatusCard(
-              label: 'Risk Level',
-              value: risk.riskLevel,
-              icon: Icons.shield_outlined,
-              color: risk.riskLevel == 'HIGH' ? AppColors.danger : risk.riskLevel == 'MODERATE' ? AppColors.warning : AppColors.safe,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _StatusCard(
-              label: 'Guardians',
-              value: '${context.watch<UserService>().currentUserModel?.guardianIds.length ?? 0}',
-              icon: Icons.group_outlined,
-              color: AppColors.secondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      backgroundColor: AppColors.surface,
-      selectedItemColor: AppColors.primary,
-      unselectedItemColor: AppColors.textSecondary,
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 0,
-      onTap: (i) {
-        final routes = [AppRoutes.dashboard, AppRoutes.map, AppRoutes.community, AppRoutes.settings];
-        if (i != 0) Navigator.pushNamed(context, routes[i]);
-      },
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.map_outlined), label: 'Map'),
-        BottomNavigationBarItem(icon: Icon(Icons.forum_outlined), label: 'Community'),
-        BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), label: 'Settings'),
+        Row(children: [
+          _headerIcon(Icons.notifications_outlined, () {}),
+          const SizedBox(width: 8),
+          _headerIcon(Icons.settings_outlined,
+              () => Navigator.pushNamed(context, AppRoutes.settings)),
+        ]),
       ],
     );
   }
-}
 
-class _QuickAction {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final String route;
-  const _QuickAction({required this.icon, required this.label, required this.color, required this.route});
-}
-
-class _QuickActionCard extends StatelessWidget {
-  final _QuickAction action;
-  const _QuickActionCard({required this.action});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _headerIcon(IconData icon, VoidCallback onTap) {
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, action.route),
+      onTap: onTap,
       child: Container(
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
-          color: action.color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: action.color.withOpacity(0.3)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(action.icon, color: action.color, size: 32),
-            const SizedBox(height: 6),
-            Text(
-              action.label,
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-              textAlign: TextAlign.center,
-            ),
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2))
           ],
         ),
+        child: Icon(icon, color: AppColors.textSecondary, size: 20),
       ),
+    );
+  }
+
+  Widget _buildStatusCard() {
+    return AnimatedBuilder(
+      animation: glowAnimation,
+      builder: (context, _) {
+        return TiltCard(
+          maxTilt: 0.08,
+          onTap: () {},
+          child: GlassPanel(
+            borderRadius: 24,
+            padding: const EdgeInsets.all(20),
+            color: Colors.white.withValues(alpha: 0.82),
+            shadow: BoxShadow(
+              color: const Color(0xFF00C853)
+                  .withValues(alpha: glowAnimation.value * 0.14),
+              blurRadius: 34,
+              spreadRadius: -5,
+            ),
+            child: Column(children: [
+              Row(children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF00C853).withValues(alpha: 0.12),
+                    border: Border.all(
+                        color: const Color(0xFF00C853).withValues(alpha: 0.25)),
+                  ),
+                  child: const Icon(Icons.security_rounded,
+                      color: Color(0xFF00C853), size: 28),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('All Systems Active',
+                            style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700)),
+                        SizedBox(height: 2),
+                        Text('Shake, voice & motion detection ON',
+                            style: TextStyle(
+                                color: AppColors.textSecondary, fontSize: 12)),
+                      ]),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                      color: const Color(0xFF00C853).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20)),
+                  child: const Text('SAFE',
+                      style: TextStyle(
+                          color: Color(0xFF00C853),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1)),
+                ),
+              ]),
+              const SizedBox(height: 16),
+              Row(children: [
+                _miniStatus(Icons.vibration, 'Shake', true),
+                _miniStatus(Icons.mic, 'Voice', true),
+                _miniStatus(Icons.screen_rotation, 'Motion', true),
+                _miniStatus(Icons.wifi, 'Network', true),
+              ]),
+            ]),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _miniStatus(IconData icon, String label, bool active) {
+    return Expanded(
+        child: Column(children: [
+      Icon(icon,
+          color: active ? const Color(0xFF00C853) : Colors.grey.shade300,
+          size: 18),
+      const SizedBox(height: 4),
+      Text(label,
+          style: TextStyle(
+              color: active ? AppColors.textSecondary : Colors.grey.shade300,
+              fontSize: 10)),
+    ]));
+  }
+
+  Widget _buildQuickActions(BuildContext context) {
+    return Row(children: [
+      _quickAction(Icons.phone_outlined, 'Fake\nCall', const Color(0xFF7C4DFF),
+          () => Navigator.pushNamed(context, AppRoutes.fakeCall)),
+      const SizedBox(width: 12),
+      _quickAction(
+          Icons.volume_up_outlined, 'Alarm\nSiren', const Color(0xFFFF6D00),
+          () {
+        try {
+          context.read<SirenService>().toggleSiren();
+        } catch (_) {}
+      }),
+      const SizedBox(width: 12),
+      _quickAction(
+          Icons.group_outlined,
+          'Guardian\nNetwork',
+          const Color(0xFF00BFA5),
+          () => Navigator.pushNamed(context, AppRoutes.guardianNetwork)),
+      const SizedBox(width: 12),
+      _quickAction(
+          Icons.directions_walk_outlined,
+          'Safe\nWalk',
+          const Color(0xFF2979FF),
+          () => Navigator.pushNamed(context, AppRoutes.safeWalk)),
+    ]);
+  }
+
+  Widget _quickAction(
+      IconData icon, String label, Color color, VoidCallback onTap) {
+    return Expanded(
+        child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.15)),
+        ),
+        child: Column(children: [
+          Icon(icon, color: color, size: 26),
+          const SizedBox(height: 8),
+          Text(label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+        ]),
+      ),
+    ));
+  }
+
+  Widget _buildSafetyMapPreview(BuildContext context) {
+    return GestureDetector(
+      onTap: onSwitchToMap,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: Colors.white,
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4))
+          ],
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Safety Map',
+                      style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700)),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                        color: AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(12)),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text('View Full Map',
+                          style: TextStyle(
+                              color: AppColors.textSecondary, fontSize: 11)),
+                      SizedBox(width: 4),
+                      Icon(Icons.arrow_forward_ios,
+                          size: 10, color: AppColors.textSecondary),
+                    ]),
+                  ),
+                ]),
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20)),
+            child: SizedBox(
+                height: 160,
+                width: double.infinity,
+                child: RealMap(
+                  center: const LatLng(28.6139, 77.2090),
+                  zoom: 12,
+                  interactive: false,
+                )),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildFeatureGrid(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('Features',
+          style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700)),
+      const SizedBox(height: 12),
+      Row(children: [
+        _featureCard(
+            Icons.report_outlined,
+            'Report\nIncident',
+            const Color(0xFFFF5252),
+            () => Navigator.pushNamed(context, AppRoutes.report)),
+        const SizedBox(width: 12),
+        _featureCard(
+            Icons.visibility_outlined,
+            'Guardian\nMonitor',
+            const Color(0xFF448AFF),
+            () => Navigator.pushNamed(context, AppRoutes.guardianMonitor)),
+      ]),
+      const SizedBox(height: 12),
+      Row(children: [
+        _featureCard(
+            Icons.warning_amber_outlined,
+            'Risk\nAlerts',
+            const Color(0xFFFFAB00),
+            () => Navigator.pushNamed(context, AppRoutes.riskAlert)),
+        const SizedBox(width: 12),
+        _featureCard(
+            Icons.visibility_off_outlined,
+            'Stealth\nMode',
+            const Color(0xFF26A69A),
+            () => Navigator.pushNamed(context, AppRoutes.stealthMode)),
+      ]),
+      const SizedBox(height: 12),
+      Row(children: [
+        _featureCard(
+            Icons.history,
+            'Incident\nHistory',
+            const Color(0xFF7C4DFF),
+            () => Navigator.pushNamed(context, AppRoutes.incidentHistory)),
+        const SizedBox(width: 12),
+        _featureCard(
+            Icons.mark_email_unread_outlined,
+            'Guardian\nApproval',
+            const Color(0xFF00897B),
+            () => Navigator.pushNamed(context, AppRoutes.guardianApproval)),
+      ]),
+    ]);
+  }
+
+  Widget _featureCard(
+      IconData icon, String label, Color color, VoidCallback onTap) {
+    return Expanded(
+        child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.15)),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2))
+          ],
+        ),
+        child: Row(children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Text(label,
+                  style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600))),
+          Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey.shade300),
+        ]),
+      ),
+    ));
+  }
+
+  Widget _buildRecentActivity() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('Recent Activity',
+          style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700)),
+      const SizedBox(height: 12),
+      _activityItem(Icons.check_circle_outline, 'Protection activated',
+          '2 min ago', const Color(0xFF00C853)),
+      _activityItem(Icons.location_on_outlined, 'Location tracking enabled',
+          '5 min ago', const Color(0xFF2979FF)),
+      _activityItem(Icons.shield_outlined, 'All guardians synced', '10 min ago',
+          const Color(0xFF7C4DFF)),
+    ]);
+  }
+
+  Widget _activityItem(IconData icon, String text, String time, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Row(children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+            child: Text(text,
+                style: const TextStyle(
+                    color: AppColors.textPrimary, fontSize: 13))),
+        Text(time,
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+      ]),
     );
   }
 }
 
-class _StatusCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-  const _StatusCard({required this.label, required this.value, required this.icon, required this.color});
-
+// ═══════════════════════════════════════════════
+// SAFETY MAP TAB
+// ═══════════════════════════════════════════════
+class _SafetyMapTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
+    return SafeArea(
+        child: Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+        child:
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          const Text('Safety Map',
+              style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800)),
+          GestureDetector(
+            onTap: () => Navigator.pushNamed(context, AppRoutes.safeRouteMap),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border:
+                    Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              ),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.route, size: 16, color: AppColors.primary),
+                SizedBox(width: 4),
+                Text('Safe Route',
+                    style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600)),
+              ]),
+            ),
+          ),
+        ]),
       ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-              Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w700)),
+      Expanded(
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: Colors.white,
+            border: Border.all(color: Colors.grey.shade200),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)
             ],
           ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Stack(children: [
+              Positioned.fill(
+                child: RealMap(
+                  center: const LatLng(28.6139, 77.2090),
+                  zoom: 13,
+                  interactive: false,
+                ),
+              ),
+              Positioned(
+                  top: 12,
+                  left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 8)
+                      ],
+                    ),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _legendItem(const Color(0xFFFF1744), 'Danger Zone'),
+                          const SizedBox(height: 6),
+                          _legendItem(const Color(0xFFFFAB00), 'Caution Area'),
+                          const SizedBox(height: 6),
+                          _legendItem(const Color(0xFF00C853), 'Safe Zone'),
+                          const SizedBox(height: 6),
+                          _legendItem(
+                              const Color(0xFF2979FF), 'Police Station'),
+                        ]),
+                  )),
+            ]),
+          ),
+        ),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+        child: Row(children: [
+          _mapInfoCard(
+              Icons.local_police, 'Nearby\nPolice', '2 stations', Colors.blue),
+          const SizedBox(width: 12),
+          _mapInfoCard(
+              Icons.local_hospital, 'Nearby\nHospitals', '3 found', Colors.red),
+          const SizedBox(width: 12),
+          _mapInfoCard(
+              Icons.lightbulb, 'Streetlight\nCoverage', '87%', Colors.orange),
+        ]),
+      ),
+    ]));
+  }
+
+  Widget _legendItem(Color color, String text) {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+      const SizedBox(width: 6),
+      Text(text,
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 10)),
+    ]);
+  }
+
+  Widget _mapInfoCard(IconData icon, String title, String value, Color color) {
+    return Expanded(
+        child: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6)
         ],
+      ),
+      child: Column(children: [
+        Icon(icon, color: color, size: 22),
+        const SizedBox(height: 6),
+        Text(title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 10,
+                fontWeight: FontWeight.w600)),
+        Text(value,
+            style: TextStyle(
+                color: color, fontSize: 11, fontWeight: FontWeight.w700)),
+      ]),
+    ));
+  }
+}
+
+// ═══════════════════════════════════════════════
+// COMMUNITY TAB
+// ═══════════════════════════════════════════════
+class _CommunityTab extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+        child: Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+        child:
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          const Text('Community Safety',
+              style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800)),
+          GestureDetector(
+            onTap: () => Navigator.pushNamed(context, AppRoutes.report),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20)),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.add, size: 16, color: AppColors.primary),
+                SizedBox(width: 4),
+                Text('Report',
+                    style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600)),
+              ]),
+            ),
+          ),
+        ]),
+      ),
+      Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+        ),
+        child: const Row(children: [
+          Icon(Icons.people_outline, color: AppColors.primary, size: 24),
+          SizedBox(width: 12),
+          Expanded(
+              child: Text('Real-time community incident reports near you',
+                  style:
+                      TextStyle(color: AppColors.textSecondary, fontSize: 13))),
+        ]),
+      ),
+      Expanded(
+          child: Center(
+              child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+            Icon(Icons.shield_outlined, size: 64, color: Colors.grey.shade300),
+            const SizedBox(height: 16),
+            const Text('No incidents reported yet',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+            const SizedBox(height: 8),
+            Text('Your area is safe!',
+                style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+            const SizedBox(height: 24),
+            GestureDetector(
+              onTap: () => Navigator.pushNamed(context, AppRoutes.report),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.3))),
+                child: const Text('Report an Incident',
+                    style: TextStyle(
+                        color: AppColors.primary, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ]))),
+    ]));
+  }
+}
+
+// ═══════════════════════════════════════════════
+// PROFILE TAB
+// ═══════════════════════════════════════════════
+class _ProfileTab extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<UserService>().currentUserModel;
+    return SafeArea(
+        child: SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+      child: Column(children: [
+        const SizedBox(height: 20),
+        CircleAvatar(
+          radius: 44,
+          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+          child: Text(
+              (user?.name.isNotEmpty == true ? user!.name[0] : 'U')
+                  .toUpperCase(),
+              style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w700)),
+        ),
+        const SizedBox(height: 12),
+        Text(user?.name ?? 'User',
+            style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 22,
+                fontWeight: FontWeight.w700)),
+        Text(user?.email ?? '',
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+        const SizedBox(height: 24),
+        _profileMenuItem(Icons.person_outlined, 'Edit Profile',
+            () => Navigator.pushNamed(context, AppRoutes.profile)),
+        _profileMenuItem(Icons.medication_outlined, 'Emergency Profile',
+            () => Navigator.pushNamed(context, AppRoutes.emergencyProfile)),
+        _profileMenuItem(
+            Icons.mark_email_unread_outlined,
+            'Guardian Approval & SOS',
+            () => Navigator.pushNamed(context, AppRoutes.guardianApproval)),
+        _profileMenuItem(Icons.shield_outlined, 'Guardian Network',
+            () => Navigator.pushNamed(context, AppRoutes.guardianNetwork)),
+        _profileMenuItem(Icons.settings_outlined, 'Settings',
+            () => Navigator.pushNamed(context, AppRoutes.settings)),
+        _profileMenuItem(Icons.history, 'Incident History',
+            () => Navigator.pushNamed(context, AppRoutes.incidentHistory)),
+        _profileMenuItem(Icons.privacy_tip_outlined, 'Privacy & Data',
+            () => Navigator.pushNamed(context, AppRoutes.privacyConsole)),
+        _profileMenuItem(Icons.info_outline, 'About KAWACH', () {}),
+        const SizedBox(height: 24),
+        const Text('KAWACH v1.0.0',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+      ]),
+    ));
+  }
+
+  Widget _profileMenuItem(IconData icon, String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade100),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02), blurRadius: 6)
+          ],
+        ),
+        child: Row(children: [
+          Icon(icon, color: AppColors.textSecondary, size: 22),
+          const SizedBox(width: 14),
+          Expanded(
+              child: Text(label,
+                  style: const TextStyle(
+                      color: AppColors.textPrimary, fontSize: 14))),
+          Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey.shade300),
+        ]),
       ),
     );
   }

@@ -17,8 +17,7 @@ class SosButton extends StatefulWidget {
   State<SosButton> createState() => _SosButtonState();
 }
 
-class _SosButtonState extends State<SosButton>
-    with TickerProviderStateMixin {
+class _SosButtonState extends State<SosButton> with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late AnimationController _pressController;
   late Animation<double> _pulseAnim;
@@ -94,8 +93,8 @@ class _SosButtonState extends State<SosButton>
                   height: size + 40,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.danger.withOpacity(
-                        _isPressed ? 0.2 : 0.1 * _pulseAnim.value),
+                    color: AppColors.danger.withValues(
+                        alpha: _isPressed ? 0.2 : 0.1 * _pulseAnim.value),
                   ),
                 ),
                 // Middle ring
@@ -104,8 +103,8 @@ class _SosButtonState extends State<SosButton>
                   height: size + 20,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.danger.withOpacity(
-                        _isPressed ? 0.3 : 0.15 * _pulseAnim.value),
+                    color: AppColors.danger.withValues(
+                        alpha: _isPressed ? 0.3 : 0.15 * _pulseAnim.value),
                   ),
                 ),
                 // Main button
@@ -116,15 +115,13 @@ class _SosButtonState extends State<SosButton>
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        _isPressed
-                            ? const Color(0xFFB71C1C)
-                            : AppColors.danger,
+                        _isPressed ? const Color(0xFFB71C1C) : AppColors.danger,
                         const Color(0xFF7B0000),
                       ],
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.danger.withOpacity(0.6),
+                        color: AppColors.danger.withValues(alpha: 0.6),
                         blurRadius: 24,
                         spreadRadius: 4,
                       ),
@@ -151,7 +148,7 @@ class _SosButtonState extends State<SosButton>
                       Text(
                         'Tap to Alert',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.75),
+                          color: Colors.white.withValues(alpha: 0.75),
                           fontSize: 11,
                         ),
                       ),

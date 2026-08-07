@@ -15,8 +15,7 @@ class PermissionManager {
     ].request();
 
     return statuses.values.every(
-      (status) =>
-          status.isGranted || status.isLimited,
+      (status) => status.isGranted || status.isLimited,
     );
   }
 

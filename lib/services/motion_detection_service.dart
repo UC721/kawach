@@ -21,9 +21,7 @@ class MotionDetectionService extends ChangeNotifier {
       samplingPeriod: SensorInterval.normalInterval,
     ).listen((event) {
       final magnitude = sqrt(
-        event.x * event.x +
-            event.y * event.y +
-            event.z * event.z,
+        event.x * event.x + event.y * event.y + event.z * event.z,
       );
 
       final delta = (magnitude - _previousMagnitude).abs();

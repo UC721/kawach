@@ -25,7 +25,7 @@ class GuardianTile extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundColor: AppColors.safe.withOpacity(0.15),
+                backgroundColor: AppColors.safe.withValues(alpha: 0.15),
                 child: Text(
                   volunteer.name.isNotEmpty
                       ? volunteer.name[0].toUpperCase()
@@ -44,8 +44,7 @@ class GuardianTile extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: AppColors.safe,
-                      border: Border.all(
-                          color: AppColors.surface, width: 2),
+                      border: Border.all(color: AppColors.surface, width: 2),
                     ),
                   ),
                 ),
@@ -71,9 +70,7 @@ class GuardianTile extends StatelessWidget {
                   ],
                 ),
                 Text(
-                  volunteer.availability
-                      ? '🟢 Available'
-                      : '🔴 Unavailable',
+                  volunteer.availability ? '🟢 Available' : '🔴 Unavailable',
                   style: TextStyle(
                       color: volunteer.availability
                           ? AppColors.safe
@@ -87,10 +84,9 @@ class GuardianTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.safe.withOpacity(0.1),
+              color: AppColors.safe.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                  color: AppColors.safe.withOpacity(0.3)),
+              border: Border.all(color: AppColors.safe.withValues(alpha: 0.3)),
             ),
             child: const Text('Volunteer',
                 style: TextStyle(color: AppColors.safe, fontSize: 10)),

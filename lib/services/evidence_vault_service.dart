@@ -1,14 +1,14 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/evidence_model.dart';
 import '../utils/constants.dart';
 
 class EvidenceVaultService extends ChangeNotifier {
-  SupabaseClient get _db => Supabase.instance.client;
-  final _uuid = const Uuid();
+  final SupabaseClient _db = Supabase.instance.client;
+  final Uuid _uuid = const Uuid();
 
   Future<void> saveEvidence({
     required String userId,
@@ -28,22 +28,22 @@ class EvidenceVaultService extends ChangeNotifier {
       timestamp: DateTime.now(),
     );
 
-    await _db
-        .from(FSCollection.evidenceVault)
-        .insert(evidence.toMap());
+    await _db.from(FSCollection.evidenceVault).insert(evidence.toMap());
   }
 
   Future<List<EvidenceModel>> getEvidence({
     required String userId,
     required String emergencyId,
   }) async {
-    final res = await _db
+    final response = await _db
         .from(FSCollection.evidenceVault)
         .select()
-        .eq('userId', userId)
-        .eq('emergencyId', emergencyId)
+        .eq('user_id', userId)
+        .eq('emergency_id', emergencyId)
         .order('timestamp', ascending: true);
-    return (res as List).map((d) => EvidenceModel.fromMap(d)).toList();
+    return (response as List)
+        .map((row) => EvidenceModel.fromMap(row as Map<String, dynamic>))
+        .toList();
   }
 
   Stream<List<EvidenceModel>> streamEvidence({
@@ -52,12 +52,17 @@ class EvidenceVaultService extends ChangeNotifier {
   }) {
     return _db
         .from(FSCollection.evidenceVault)
-        .stream(primaryKey: ['evidenceId'])
-        .eq('userId', userId)
+        .stream(primaryKey: ['evidence_id'])
+        .eq('user_id', userId)
         .map((docs) {
-          final filtered = docs.where((d) => d['emergencyId'] == emergencyId).toList();
-          filtered.sort((a, b) => (a['timestamp'] as String).compareTo(b['timestamp'] as String));
-          return filtered.map((d) => EvidenceModel.fromMap(d)).toList();
+          final filtered =
+              docs.where((row) => row['emergency_id'] == emergencyId).toList()
+                ..sort((left, right) {
+                  final leftTime = left['timestamp'] as String? ?? '';
+                  final rightTime = right['timestamp'] as String? ?? '';
+                  return leftTime.compareTo(rightTime);
+                });
+          return filtered.map(EvidenceModel.fromMap).toList();
         });
   }
 }

@@ -32,12 +32,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadData() async {
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) return;
-    await context.read<UserService>().loadCurrentUser(uid);
-    final user = context.read<UserService>().currentUserModel;
+    final userService = context.read<UserService>();
+    await userService.loadCurrentUser(uid);
+    final user = userService.currentUserModel;
     if (user != null) {
       _nameCtrl.text = user.name;
       _phoneCtrl.text = user.phone;
-      _guardians = await context.read<UserService>().getGuardians(uid);
+      _guardians = await userService.getGuardians(uid);
       setState(() {});
     }
   }
@@ -51,8 +52,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
     setState(() => _editMode = false);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Profile updated')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('✅ Profile updated')));
     }
   }
 
@@ -64,9 +65,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       userId: uid,
       name: _gNameCtrl.text.trim(),
       phone: _gPhoneCtrl.text.trim(),
-      relationship: _gRelCtrl.text.trim().isEmpty
-          ? 'Contact'
-          : _gRelCtrl.text.trim(),
+      relationship:
+          _gRelCtrl.text.trim().isEmpty ? 'Contact' : _gRelCtrl.text.trim(),
     );
     await context.read<UserService>().addGuardian(guardian);
     _gNameCtrl.clear();
@@ -95,7 +95,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             const Text('Add Emergency Contact',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 20),
@@ -104,15 +104,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _Field(_gPhoneCtrl, 'Phone Number', Icons.phone_outlined,
                 type: TextInputType.phone),
             const SizedBox(height: 12),
-            _Field(_gRelCtrl, 'Relationship (e.g. Mom)',
-                Icons.favorite_outline),
+            _Field(
+                _gRelCtrl, 'Relationship (e.g. Mom)', Icons.favorite_outline),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                  onPressed: _addGuardian,
-                  child: const Text('Add Contact')),
+                  onPressed: _addGuardian, child: const Text('Add Contact')),
             ),
           ],
         ),
@@ -149,11 +148,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Center(
             child: CircleAvatar(
               radius: 44,
-              backgroundColor: AppColors.primary.withOpacity(0.2),
+              backgroundColor: AppColors.primary.withValues(alpha: 0.2),
               child: Text(
-                (user?.name.isNotEmpty == true
-                        ? user!.name[0]
-                        : 'U')
+                (user?.name.isNotEmpty == true ? user!.name[0] : 'U')
                     .toUpperCase(),
                 style: const TextStyle(
                     color: AppColors.primary,
@@ -179,7 +176,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               const Text('Emergency Contacts',
                   style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 16,
                       fontWeight: FontWeight.w600)),
               IconButton(
@@ -207,7 +204,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // Sign out
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
-              side: BorderSide(color: AppColors.danger.withOpacity(0.6)),
+              side: BorderSide(color: AppColors.danger.withValues(alpha: 0.6)),
               foregroundColor: AppColors.danger,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
@@ -246,11 +243,10 @@ class _Field extends StatelessWidget {
       controller: ctrl,
       enabled: enabled,
       keyboardType: type,
-      style: const TextStyle(color: Colors.white),
+      style: const TextStyle(color: AppColors.textPrimary),
       decoration: InputDecoration(
           labelText: label,
-          prefixIcon:
-              Icon(icon, color: AppColors.textSecondary, size: 20)),
+          prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 20)),
     );
   }
 }
@@ -277,7 +273,8 @@ class _ReadOnly extends StatelessWidget {
                 style: const TextStyle(
                     color: AppColors.textSecondary, fontSize: 11)),
             Text(value,
-                style: const TextStyle(color: Colors.white, fontSize: 14)),
+                style: const TextStyle(
+                    color: AppColors.textPrimary, fontSize: 14)),
           ]),
         ],
       ),
@@ -298,9 +295,8 @@ class _EmptyGuardians extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surfaceVariant,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-              color: AppColors.cardBorder,
-              style: BorderStyle.solid),
+          border:
+              Border.all(color: AppColors.cardBorder, style: BorderStyle.solid),
         ),
         child: const Column(
           children: [
@@ -308,8 +304,7 @@ class _EmptyGuardians extends StatelessWidget {
                 size: 36, color: AppColors.textSecondary),
             SizedBox(height: 8),
             Text('Add Emergency Contacts',
-                style: TextStyle(
-                    color: AppColors.textSecondary, fontSize: 14)),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
           ],
         ),
       ),

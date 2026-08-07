@@ -57,6 +57,14 @@ class SirenService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> toggleSiren() async {
+    if (_isActive) {
+      await stopSiren();
+    } else {
+      await startSiren();
+    }
+  }
+
   @override
   void dispose() {
     stopSiren();

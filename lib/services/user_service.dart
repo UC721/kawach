@@ -1,129 +1,110 @@
 import 'dart:convert';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../models/user_model.dart';
 import '../models/guardian_model.dart';
+import '../models/user_model.dart';
 import '../utils/constants.dart';
 
 class UserService extends ChangeNotifier {
-  SupabaseClient get _db => Supabase.instance.client;
+  final SupabaseClient _db = Supabase.instance.client;
   static const String _userKey = 'current_user_data';
 
   UserModel? _currentUserModel;
   UserModel? get currentUserModel => _currentUserModel;
 
-  // ── Mock in-memory database ────────────────────────────────
-  final Map<String, UserModel> _mockDb = {};
-
-  // ── Load current user profile ────────────────────────────────
   Future<void> loadCurrentUser(String uid) async {
     final prefs = await SharedPreferences.getInstance();
-    final userData = prefs.getString(_userKey);
-    
-    if (userData != null) {
-      try {
-        final Map<String, dynamic> map = jsonDecode(userData);
-        // Note: Firestore Timestamp doesn't decode from JSON directly, 
-        // using a simple mock approach for the demo.
-        _currentUserModel = UserModel(
-          userId: map['userId'] ?? uid,
-          name: map['name'] ?? 'User',
-          phone: map['phone'] ?? '',
-          email: map['email'],
-          guardianIds: List<String>.from(map['guardianIds'] ?? []),
-          createdAt: DateTime.now(),
-        );
-        _mockDb[uid] = _currentUserModel!;
+
+    try {
+      final response = await _db
+          .from(FSCollection.users)
+          .select()
+          .eq('user_id', uid)
+          .maybeSingle();
+      if (response != null) {
+        _currentUserModel = UserModel.fromMap(response);
+        await prefs.setString(_userKey, jsonEncode(response));
         notifyListeners();
         return;
-      } catch (e) {
-        debugPrint('Error decoding persisted user: $e');
       }
-    }
+    } catch (_) {}
 
-    // Fallback to mock delay
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (_mockDb.containsKey(uid)) {
-      _currentUserModel = _mockDb[uid];
+    final local = prefs.getString(_userKey);
+    if (local != null) {
+      _currentUserModel = UserModel.fromMap(
+        jsonDecode(local) as Map<String, dynamic>,
+      );
       notifyListeners();
     }
   }
 
-  // ── Create user profile ──────────────────────────────────────
   Future<void> createUser(UserModel user) async {
+    final payload = {
+      'user_id': user.userId,
+      ...user.toMap(),
+    };
     final prefs = await SharedPreferences.getInstance();
-    final userData = jsonEncode({
-      'userId': user.userId,
-      'name': user.name,
-      'phone': user.phone,
-      'email': user.email,
-      'guardianIds': user.guardianIds,
-    });
-    await prefs.setString(_userKey, userData);
-    
-    _mockDb[user.userId] = user;
-    _currentUserModel = user;
-    notifyListeners();
-  }
 
-  // ── Update user profile ──────────────────────────────────────
-  Future<void> updateUser(String uid, Map<String, dynamic> data) async {
-    if (_currentUserModel != null) {
-      _currentUserModel = _currentUserModel!.copyWith(
-        name: data['name'] ?? _currentUserModel!.name,
-        phone: data['phone'] ?? _currentUserModel!.phone,
-      );
-      await createUser(_currentUserModel!);
+    try {
+      await _db.from(FSCollection.users).upsert(payload);
+    } finally {
+      await prefs.setString(_userKey, jsonEncode(payload));
+      _currentUserModel = user;
+      notifyListeners();
     }
   }
 
-  // ── Guardians ────────────────────────────────────────────────
+  Future<void> updateUser(String uid, Map<String, dynamic> data) async {
+    final payload = <String, dynamic>{
+      if (data['name'] != null) 'name': data['name'],
+      if (data['phone'] != null) 'phone': data['phone'],
+      if (data['email'] != null) 'email': data['email'],
+    };
+    await _db.from(FSCollection.users).update(payload).eq('user_id', uid);
+    await loadCurrentUser(uid);
+  }
+
   Future<List<GuardianModel>> getGuardians(String userId) async {
-    // For demo, return empty list if not connected to real Firestore
     try {
-      final res = await _db
-          .from(FSCollection.guardians)
-          .select()
-          .eq('userId', userId);
-      return (res as List).map((d) => GuardianModel.fromMap(d)).toList();
-    } catch (e) {
+      final response =
+          await _db.from(FSCollection.guardians).select().eq('user_id', userId);
+      return (response as List)
+          .map((item) => GuardianModel.fromMap(item as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
       return [];
     }
   }
 
   Future<void> addGuardian(GuardianModel guardian) async {
-    // In Supabase, the id is typically generated by the DB or provided.
-    // Assuming guardianId is generated client side or relying on DB default.
-    final guardianData = guardian.toMap();
-    // Usually need to ensure the ID is removed if it's auto-increment, 
-    // or kept if it's UUID. Since model requires it, let's keep it if set, else let DB handle.
-    // For simplicity, inserting the map.
-    await _db.from(FSCollection.guardians).insert(guardianData);
-
-    final uid = guardian.userId;
-    // Note: Array union is tricky in plain PostgREST without an RPC.
-    // For demo purposes, we will skip the denormalized array update or mock it.
-    // Ideal: await _db.rpc('add_guardian', params: {'user_id': uid, 'guardian_id': guardian.guardianId});
-    
-    await loadCurrentUser(uid);
+    await _db.from(FSCollection.guardians).upsert(guardian.toMap());
+    await loadCurrentUser(guardian.userId);
   }
 
   Future<void> removeGuardian(String userId, String guardianId) async {
-    await _db.from(FSCollection.guardians).delete().eq('guardianId', guardianId);
-    // Note: Array remove is tricky in plain PostgREST without an RPC. Skip for demo.
+    await _db
+        .from(FSCollection.guardians)
+        .delete()
+        .eq('guardian_id', guardianId);
     await loadCurrentUser(userId);
   }
 
   Future<void> logActivity(String userId, String event) async {
-    debugPrint('User Activity: $event by User $userId');
+    await _db.from(FSCollection.activityLogs).insert({
+      'user_id': userId,
+      'event': event,
+      'created_at': DateTime.now().toIso8601String(),
+    });
   }
 
-  Stream<UserModel?> streamUser(String uid) async* {
-    while (true) {
-      await Future.delayed(const Duration(seconds: 2));
-      yield _currentUserModel;
-    }
+  Stream<UserModel?> streamUser(String uid) {
+    return _db
+        .from(FSCollection.users)
+        .stream(primaryKey: ['user_id'])
+        .eq('user_id', uid)
+        .map((docs) => docs.isEmpty ? null : UserModel.fromMap(docs.first));
   }
 }

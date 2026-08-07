@@ -154,8 +154,8 @@ class _CallTimer extends StatefulWidget {
 
 class _CallTimerState extends State<_CallTimer> {
   int _seconds = 0;
-  late final timer = Stream.periodic(const Duration(seconds: 1),
-      (i) => i + 1).listen((s) => setState(() => _seconds = s));
+  late final timer = Stream.periodic(const Duration(seconds: 1), (i) => i + 1)
+      .listen((s) => setState(() => _seconds = s));
 
   @override
   void dispose() {
@@ -168,8 +168,7 @@ class _CallTimerState extends State<_CallTimer> {
     final m = (_seconds ~/ 60).toString().padLeft(2, '0');
     final s = (_seconds % 60).toString().padLeft(2, '0');
     return Text('$m:$s',
-        style:
-            const TextStyle(color: Colors.white60, fontSize: 20));
+        style: const TextStyle(color: Colors.white60, fontSize: 20));
   }
 }
 

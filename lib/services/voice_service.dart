@@ -45,15 +45,16 @@ class VoiceService extends ChangeNotifier {
       },
       listenFor: const Duration(seconds: 10),
       pauseFor: const Duration(seconds: 3),
-      partialResults: true,
-      cancelOnError: false,
+      listenOptions: SpeechListenOptions(
+        partialResults: true,
+        cancelOnError: false,
+      ),
     );
   }
 
   void _restartListening() {
     if (!_isListening) return;
-    _restartTimer = Timer(
-        const Duration(milliseconds: 500), _listenCycle);
+    _restartTimer = Timer(const Duration(milliseconds: 500), _listenCycle);
   }
 
   void _checkForPanicPhrases(String text) {

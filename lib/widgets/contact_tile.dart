@@ -39,14 +39,11 @@ class ContactTile extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: AppColors.primary.withOpacity(0.15),
+            backgroundColor: AppColors.primary.withValues(alpha: 0.15),
             child: Text(
-              guardian.name.isNotEmpty
-                  ? guardian.name[0].toUpperCase()
-                  : '?',
+              guardian.name.isNotEmpty ? guardian.name[0].toUpperCase() : '?',
               style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700),
+                  color: AppColors.primary, fontWeight: FontWeight.w700),
             ),
           ),
           const SizedBox(width: 12),

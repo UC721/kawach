@@ -60,12 +60,10 @@ class PredictiveDangerService extends ChangeNotifier {
     final recentReports = await _getRecentReportsNear(lat, lng);
     if (recentReports > 5) {
       score += 2.0;
-      _riskFactors
-          .add('$recentReports incidents reported in this area (24h)');
+      _riskFactors.add('$recentReports incidents reported in this area (24h)');
     } else if (recentReports > 2) {
       score += 1.0;
-      _riskFactors
-          .add('$recentReports recent incidents nearby');
+      _riskFactors.add('$recentReports recent incidents nearby');
     }
 
     _riskScore = score.clamp(0, 10);
@@ -74,10 +72,10 @@ class PredictiveDangerService extends ChangeNotifier {
   }
 
   double _calculateTimeRisk(int hour) {
-    if (hour >= 23 || hour < 4) return 4.0;  // Late night – very high
-    if (hour >= 20 || hour < 6) return 2.5;  // Evening/early morning
-    if (hour >= 18) return 1.0;              // Dusk
-    return 0.0;                              // Daytime – safe
+    if (hour >= 23 || hour < 4) return 4.0; // Late night – very high
+    if (hour >= 20 || hour < 6) return 2.5; // Evening/early morning
+    if (hour >= 18) return 1.0; // Dusk
+    return 0.0; // Daytime – safe
   }
 
   String _getTimeRiskText(int hour) {
@@ -100,8 +98,7 @@ class PredictiveDangerService extends ChangeNotifier {
         final double? rLat = data['latitude'] ?? data['lat'];
         final double? rLng = data['longitude'] ?? data['lng'];
         if (rLat != null && rLng != null) {
-          final dist = Geolocator.distanceBetween(
-              lat, lng, rLat, rLng);
+          final dist = Geolocator.distanceBetween(lat, lng, rLat, rLng);
           if (dist <= 1000) count++;
         }
       }
