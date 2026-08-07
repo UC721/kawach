@@ -369,4 +369,4 @@ Private/internal — contact the project maintainers for usage.
 
 ---
 
-<p align="center"><sub>Built with ❤️ by the KAWACH team · <b>Your Shield. Always.</b></sub></p>
+<p align="center"><sub>Built with ❤️ by the VAPORLOGIC team · <b>Your Shield. Always.</b></sub></p>
