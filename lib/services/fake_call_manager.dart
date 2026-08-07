@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:audioplayers/audioplayers.dart';
-
-import 'notification_service.dart';
 
 class CallerIdentity {
   final String name;
@@ -29,8 +27,9 @@ class FakeCallManager {
 
   /// Schedules a fake call after a specific delay.
   void scheduleFakeCall(Duration delay, CallerIdentity caller) {
-    debugPrint('--- KAWACH: Scheduling Fake Call from ${caller.name} in ${delay.inSeconds} seconds ---');
-    
+    debugPrint(
+        '--- KAWACH: Scheduling Fake Call from ${caller.name} in ${delay.inSeconds} seconds ---');
+
     _callTimer?.cancel();
     _callTimer = Timer(delay, () => _triggerCall(caller));
   }
@@ -90,7 +89,7 @@ class FakeCallManager {
         ),
       ],
     );
-    
+
     const NotificationDetails platformChannelSpecifics =
         NotificationDetails(android: androidPlatformChannelSpecifics);
 
@@ -98,10 +97,10 @@ class FakeCallManager {
         FlutterLocalNotificationsPlugin();
 
     await flutterLocalNotificationsPlugin.show(
-      888, // Unique ID for fake calls
-      'Incoming Call',
-      caller.name,
-      platformChannelSpecifics,
+      id: 888, // Unique ID for fake calls
+      title: 'Incoming Call',
+      body: caller.name,
+      notificationDetails: platformChannelSpecifics,
     );
   }
 
@@ -110,11 +109,11 @@ class FakeCallManager {
     if (!_isRinging) return;
     _isRinging = false;
     _ringtonePlayer.stop();
-    
+
     final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
         FlutterLocalNotificationsPlugin();
-    flutterLocalNotificationsPlugin.cancel(888);
-    
+    flutterLocalNotificationsPlugin.cancel(id: 888);
+
     debugPrint('--- KAWACH: Fake Call Ended ---');
   }
 }

@@ -92,14 +92,12 @@ class PayloadCipher {
   }
 
   static List<int> _deriveMacKey(String scope, List<int> nonce) {
-    return sha256
-        .convert([
-          ...utf8.encode('mac'),
-          ...utf8.encode(AppKeys.emergencyCipherSeed),
-          ...utf8.encode(scope),
-          ...nonce,
-        ])
-        .bytes;
+    return sha256.convert([
+      ...utf8.encode('mac'),
+      ...utf8.encode(AppKeys.emergencyCipherSeed),
+      ...utf8.encode(scope),
+      ...nonce,
+    ]).bytes;
   }
 
   static List<int> _randomBytes(int length) {

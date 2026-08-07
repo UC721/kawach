@@ -55,13 +55,14 @@ class EvidenceVaultService extends ChangeNotifier {
         .stream(primaryKey: ['evidence_id'])
         .eq('user_id', userId)
         .map((docs) {
-      final filtered = docs.where((row) => row['emergency_id'] == emergencyId).toList()
-        ..sort((left, right) {
-          final leftTime = left['timestamp'] as String? ?? '';
-          final rightTime = right['timestamp'] as String? ?? '';
-          return leftTime.compareTo(rightTime);
+          final filtered =
+              docs.where((row) => row['emergency_id'] == emergencyId).toList()
+                ..sort((left, right) {
+                  final leftTime = left['timestamp'] as String? ?? '';
+                  final rightTime = right['timestamp'] as String? ?? '';
+                  return leftTime.compareTo(rightTime);
+                });
+          return filtered.map(EvidenceModel.fromMap).toList();
         });
-      return filtered.map(EvidenceModel.fromMap).toList();
-    });
   }
 }

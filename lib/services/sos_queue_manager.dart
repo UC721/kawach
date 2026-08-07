@@ -107,7 +107,8 @@ class SosQueueManager extends ChangeNotifier {
     return _readJsonList(_evidenceQueueKey);
   }
 
-  Future<void> replaceQueuedEvidenceJobs(List<Map<String, dynamic>> items) async {
+  Future<void> replaceQueuedEvidenceJobs(
+      List<Map<String, dynamic>> items) async {
     await _writeJsonList(_evidenceQueueKey, items);
   }
 

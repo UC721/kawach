@@ -23,7 +23,8 @@ class AuthService extends ChangeNotifier {
         }
       });
     } catch (e) {
-      debugPrint('AuthService: Failed to init auth listener (Supabase might not be ready): $e');
+      debugPrint(
+          'AuthService: Failed to init auth listener (Supabase might not be ready): $e');
     }
   }
 
@@ -41,8 +42,8 @@ class AuthService extends ChangeNotifier {
   }
 
   String? get currentUserId => _auth.currentUser?.id;
-  
-  Stream<AuthState> get authStateChanges => _auth.onAuthStateChange; 
+
+  Stream<AuthState> get authStateChanges => _auth.onAuthStateChange;
   bool get isAuthenticated => _isAuthenticated;
 
   Future<String?> signInWithEmail(String email, String password) async {
@@ -53,7 +54,7 @@ class AuthService extends ChangeNotifier {
       );
       if (res.user != null) {
         await _setAuthState(true);
-        return res.user?.id; 
+        return res.user?.id;
       }
       return null;
     } catch (e) {
@@ -98,7 +99,8 @@ class AuthService extends ChangeNotifier {
       final AuthResponse res = await _auth.verifyOTP(
         type: OtpType.sms,
         token: credential.toString(),
-        phone: 'phone_number_from_elsewhere', // Simplified for demo, needs proper handling
+        phone:
+            'phone_number_from_elsewhere', // Simplified for demo, needs proper handling
       );
       if (res.user != null) {
         await _setAuthState(true);

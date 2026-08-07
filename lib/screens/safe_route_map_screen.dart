@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:provider/provider.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../services/location_service.dart';
 import '../services/route_safety_service.dart';
@@ -8,6 +9,7 @@ import '../services/danger_zone_service.dart';
 import '../models/danger_zone_model.dart';
 import '../services/emergency_service.dart';
 import '../utils/constants.dart';
+import '../widgets/real_map.dart';
 
 class SafeRouteMapScreen extends StatefulWidget {
   final LatLng? destination;
@@ -18,15 +20,13 @@ class SafeRouteMapScreen extends StatefulWidget {
 }
 
 class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
-  GoogleMapController? _mapController;
+  final MapController _mapController = MapController();
   LatLng? _origin;
   LatLng? _destination;
-  Set<Polyline> _polylines = {};
-  Set<Marker> _markers = {};
-  Set<Circle> _dangerCircles = {};
+  List<LatLng> _polylines = [];
+  List<RealMapMarker> _markers = [];
+  List<DangerZoneData> _dangerZones = [];
   bool _loading = false;
-  CameraPosition? _currentCameraPosition;
-  bool _isCameraMoving = false;
 
   @override
   void initState() {
@@ -50,74 +50,66 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
     setState(() => _loading = true);
 
     final zones = context.read<DangerZoneService>().dangerZones;
-    final polyline = await context.read<RouteSafetyService>().calculateSafeRoute(
-          origin: _origin!,
-          destination: _destination!,
-          dangerZones: zones,
-        );
+    final polyline =
+        await context.read<RouteSafetyService>().calculateSafeRoute(
+              origin: _origin!,
+              destination: _destination!,
+              dangerZones: zones,
+            );
 
-    if (polyline.isNotEmpty) {
+    if (mounted) {
       setState(() {
-        _polylines = {
-          Polyline(
-            polylineId: const PolylineId('safe_route'),
-            points: polyline,
-            color: AppColors.safe,
-            width: 5,
+        _polylines = polyline;
+        _markers = [
+          RealMapMarker(
+            point: _origin!,
+            color: Colors.blue,
+            icon: Icons.person_pin_circle,
           ),
-        };
-        _markers = {
-          Marker(
-              markerId: const MarkerId('origin'),
-              position: _origin!,
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                  BitmapDescriptor.hueBlue),
-              infoWindow: const InfoWindow(title: 'You are here')),
-          Marker(
-              markerId: const MarkerId('dest'),
-              position: _destination!,
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                  BitmapDescriptor.hueGreen),
-              infoWindow: const InfoWindow(title: 'Destination')),
-        };
+          RealMapMarker(
+            point: _destination!,
+            color: AppColors.safe,
+            icon: Icons.flag,
+          ),
+        ];
+        _dangerZones = [
+          for (final zone in zones)
+            DangerZoneData(
+              center: LatLng(zone.lat, zone.lng),
+              radiusMeters: AppThresholds.dangerZoneRadiusMeters,
+              color: _severityToColor(zone.severity),
+            ),
+        ];
+        _loading = false;
       });
+      _frameRoute();
     }
-    setState(() => _loading = false);
-    _buildHeatmap(zones);
   }
 
-  void _buildHeatmap(List<DangerZoneModel> zones) {
-    final circles = <Circle>{};
-    for (final zone in zones) {
-      final color = _severityToColor(zone.severity);
-      for (int i = 1; i <= 3; i++) {
-        circles.add(Circle(
-          circleId: CircleId('${zone.zoneId}_$i'),
-          center: LatLng(zone.lat, zone.lng),
-          radius: AppThresholds.dangerZoneRadiusMeters * (i / 3),
-          fillColor: color.withOpacity(0.15 * (4 - i)),
-          strokeWidth: 0,
-        ));
-      }
-      circles.add(Circle(
-        circleId: CircleId('${zone.zoneId}_border'),
-        center: LatLng(zone.lat, zone.lng),
-        radius: AppThresholds.dangerZoneRadiusMeters,
-        fillColor: Colors.transparent,
-        strokeColor: color.withOpacity(0.5),
-        strokeWidth: 2,
-      ));
+  void _frameRoute() {
+    if (_origin == null || _destination == null) return;
+    try {
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: LatLngBounds.fromPoints([_origin!, _destination!]),
+          padding: const EdgeInsets.all(80),
+        ),
+      );
+    } catch (_) {
+      _mapController.move(_origin!, 13);
     }
-    setState(() => _dangerCircles = circles);
   }
 
   Color _severityToColor(DangerSeverity s) {
     switch (s) {
-      case DangerSeverity.critical: return const Color(0xFF9C27B0);
-      case DangerSeverity.high: return const Color(0xFFF44336);
-      case DangerSeverity.medium: return const Color(0xFFFF9800);
-      case DangerSeverity.low: return const Color(0xFF4CAF50);
-      default: return const Color(0xFF4CAF50);
+      case DangerSeverity.critical:
+        return const Color(0xFF9C27B0);
+      case DangerSeverity.high:
+        return const Color(0xFFF44336);
+      case DangerSeverity.medium:
+        return const Color(0xFFFF9800);
+      case DangerSeverity.low:
+        return const Color(0xFF4CAF50);
     }
   }
 
@@ -126,7 +118,8 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
     final emergency = context.watch<EmergencyService>();
     if (emergency.stealthMode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.stealthMode, (_) => false);
+        Navigator.pushNamedAndRemoveUntil(
+            context, AppRoutes.stealthMode, (_) => false);
       });
     }
 
@@ -134,127 +127,100 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.dashboard, (route) => false);
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil(AppRoutes.dashboard, (route) => false);
       },
       child: Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Safe Route'),
-        actions: [
-          if (_loading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.only(right: 16),
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                       color: AppColors.primary, strokeWidth: 2),
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text('Safe Route'),
+          actions: [
+            if (_loading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.only(right: 16),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        color: AppColors.primary, strokeWidth: 2),
+                  ),
                 ),
               ),
-            ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-                target: _origin ?? const LatLng(28.6139, 77.2090),
-                zoom: 14),
-            myLocationEnabled: true,
-            polylines: _polylines,
-            markers: _markers,
-            circles: _dangerCircles,
-            onMapCreated: (c) => _mapController = c,
-            onCameraMoveStarted: () => setState(() => _isCameraMoving = true),
-            onCameraMove: (pos) => _currentCameraPosition = pos,
-            onCameraIdle: () => setState(() => _isCameraMoving = false),
-            onTap: (latLng) {
-              setState(() => _destination = latLng);
-              _calculateRoute();
-            },
-            style: _mapStyle,
-          ),
-          
-          // Central Crosshair Pin
-          if (_destination == null)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 35),
-                child: Icon(
-                  Icons.location_on_rounded,
-                  size: 44,
-                  color: _isCameraMoving ? AppColors.primary.withOpacity(0.7) : AppColors.primary,
-                ),
-              ),
-            ),
-
-          if (_destination == null && !_isCameraMoving)
-            Positioned(
-              bottom: 120,
-              left: 50,
-              right: 50,
-              child: ElevatedButton(
-                onPressed: () {
-                  if (_currentCameraPosition != null) {
-                    setState(() => _destination = _currentCameraPosition!.target);
-                    _calculateRoute();
-                  }
+          ],
+        ),
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: RealMap(
+                center: _origin ?? const LatLng(28.6139, 77.2090),
+                controller: _mapController,
+                dangerZones: _dangerZones,
+                markers: _markers,
+                polyline: _polylines,
+                userLocation: _origin,
+                onTap: (_, latLng) {
+                  setState(() => _destination = latLng);
+                  _calculateRoute();
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                ),
-                child: const Text('Confirm Destination', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
-          if (_destination == null && _isCameraMoving)
+            if (_destination == null)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 35),
+                  child: Icon(
+                    Icons.location_on_rounded,
+                    size: 44,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            if (_destination == null)
+              Positioned(
+                bottom: 16,
+                left: 16,
+                right: 16,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: 0.95),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.touch_app, color: AppColors.primary, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Tap on the map to choose your destination',
+                        style: TextStyle(
+                            color: AppColors.textSecondary, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             Positioned(
-              bottom: 80,
-              left: 16,
+              top: 16,
               right: 16,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surface.withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.gps_fixed,
-                        color: AppColors.primary, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Move map to your destination...',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                    ),
-                  ],
-                ),
+              child: Column(
+                children: [
+                  _SafePlaceBtn(
+                    icon: Icons.local_police_outlined,
+                    label: 'Police',
+                    onTap: () => _findSafePlace('police'),
+                  ),
+                  const SizedBox(height: 8),
+                  _SafePlaceBtn(
+                    icon: Icons.local_hospital_outlined,
+                    label: 'Hospital',
+                    onTap: () => _findSafePlace('hospital'),
+                  ),
+                ],
               ),
             ),
-          // Find safe places buttons
-          Positioned(
-            top: 16,
-            right: 16,
-            child: Column(
-              children: [
-                _SafePlaceBtn(
-                  icon: Icons.local_police_outlined,
-                  label: 'Police',
-                  onTap: () => _findSafePlace('police'),
-                ),
-                const SizedBox(height: 8),
-                _SafePlaceBtn(
-                  icon: Icons.local_hospital_outlined,
-                  label: 'Hospital',
-                  onTap: () => _findSafePlace('hospital'),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -266,17 +232,10 @@ class _SafeRouteMapScreenState extends State<SafeRouteMapScreen> {
           type: type,
         );
     if (place != null && mounted) {
-      final loc = place['geometry']?['location'];
-      if (loc != null) {
-        setState(() {
-          _destination = LatLng(loc['lat'], loc['lng']);
-        });
-        await _calculateRoute();
-      }
+      setState(() => _destination = place);
+      await _calculateRoute();
     }
   }
-
-  static const _mapStyle = '[]';
 }
 
 class _SafePlaceBtn extends StatelessWidget {
@@ -294,18 +253,17 @@ class _SafePlaceBtn extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: AppColors.surface.withOpacity(0.95),
+          color: AppColors.surface.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(12),
-          boxShadow: const [
-            BoxShadow(color: Colors.black38, blurRadius: 8)
-          ],
+          boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 8)],
         ),
         child: Row(
           children: [
             Icon(icon, color: AppColors.primary, size: 18),
             const SizedBox(width: 6),
             Text(label,
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 12)),
+                style: const TextStyle(
+                    color: AppColors.textPrimary, fontSize: 12)),
           ],
         ),
       ),

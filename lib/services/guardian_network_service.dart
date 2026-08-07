@@ -80,7 +80,8 @@ class GuardianNetworkService extends ChangeNotifier {
         .eq('verified', true);
 
     _nearbyVolunteers = (response as List)
-        .map((item) => GuardianNetworkModel.fromMap(item as Map<String, dynamic>))
+        .map((item) =>
+            GuardianNetworkModel.fromMap(item as Map<String, dynamic>))
         .where((volunteer) {
       if (volunteer.lat == null || volunteer.lng == null) {
         return false;
@@ -125,9 +126,8 @@ class GuardianNetworkService extends ChangeNotifier {
         .from(FSCollection.guardianNetwork)
         .stream(primaryKey: ['volunteer_id'])
         .eq('verified', true)
-        .map((docs) => docs
-            .map((doc) => GuardianNetworkModel.fromMap(doc))
-            .toList());
+        .map((docs) =>
+            docs.map((doc) => GuardianNetworkModel.fromMap(doc)).toList());
   }
 
   Stream<List<NearbyAlertModel>> streamIncomingAlerts() {

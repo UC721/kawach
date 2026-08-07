@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:provider/provider.dart';
-
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../services/location_service.dart';
 import '../services/emergency_service.dart';
 import '../models/emergency_model.dart';
 import '../utils/constants.dart';
+import '../widgets/real_map.dart';
 
 /// Guardian's real-time monitoring screen – shows user's live location
 /// and active emergency status.
@@ -16,12 +17,11 @@ class GuardianMonitorScreen extends StatefulWidget {
   const GuardianMonitorScreen({super.key, this.watchedUserId});
 
   @override
-  State<GuardianMonitorScreen> createState() =>
-      _GuardianMonitorScreenState();
+  State<GuardianMonitorScreen> createState() => _GuardianMonitorScreenState();
 }
 
 class _GuardianMonitorScreenState extends State<GuardianMonitorScreen> {
-  GoogleMapController? _mapController;
+  final MapController _mapController = MapController();
   LatLng? _userLatLng;
 
   @override
@@ -37,8 +37,7 @@ class _GuardianMonitorScreenState extends State<GuardianMonitorScreen> {
             icon: const Icon(Icons.my_location),
             onPressed: () {
               if (_userLatLng != null) {
-                _mapController?.animateCamera(
-                    CameraUpdate.newLatLngZoom(_userLatLng!, 16));
+                _mapController.move(_userLatLng!, 16);
               }
             },
           ),
@@ -54,7 +53,7 @@ class _GuardianMonitorScreenState extends State<GuardianMonitorScreen> {
             builder: (_, snap) {
               final emergency = snap.data;
               if (emergency == null) {
-                return _SafeBanner();
+                return const _SafeBanner();
               }
               return _EmergencyBanner(emergency: emergency);
             },
@@ -62,39 +61,30 @@ class _GuardianMonitorScreenState extends State<GuardianMonitorScreen> {
           // Live map
           Expanded(
             child: StreamBuilder<Map<String, double>?>(
-              stream: context
-                  .read<LocationService>()
-                  .streamUserLocation(uid),
+              stream: context.read<LocationService>().streamUserLocation(uid),
               builder: (_, snap) {
                 final geoPoint = snap.data;
                 if (geoPoint != null) {
-                  _userLatLng = LatLng(
-                      geoPoint['lat']!, geoPoint['lng']!);
-                  _mapController?.animateCamera(
-                      CameraUpdate.newLatLng(_userLatLng!));
+                  final point = LatLng(geoPoint['lat']!, geoPoint['lng']!);
+                  if (point != _userLatLng) {
+                    setState(() => _userLatLng = point);
+                  }
+                  _mapController.move(point, 15);
                 }
 
-                return GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: _userLatLng ??
-                        const LatLng(28.6139, 77.2090),
-                    zoom: 15,
-                  ),
-                  myLocationEnabled: false,
+                return RealMap(
+                  center: _userLatLng ?? const LatLng(28.6139, 77.2090),
+                  controller: _mapController,
                   markers: _userLatLng != null
-                      ? {
-                          Marker(
-                            markerId: const MarkerId('user'),
-                            position: _userLatLng!,
-                            icon:
-                                BitmapDescriptor.defaultMarkerWithHue(
-                                    BitmapDescriptor.hueRed),
-                            infoWindow: const InfoWindow(
-                                title: 'Protected User'),
+                      ? [
+                          RealMapMarker(
+                            point: _userLatLng!,
+                            color: AppColors.danger,
+                            icon: Icons.person_pin_circle,
+                            label: 'Protected User',
                           ),
-                        }
-                      : {},
-                  onMapCreated: (c) => _mapController = c,
+                        ]
+                      : [],
                 );
               },
             ),
@@ -106,12 +96,14 @@ class _GuardianMonitorScreenState extends State<GuardianMonitorScreen> {
 }
 
 class _SafeBanner extends StatelessWidget {
+  const _SafeBanner();
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
-      color: AppColors.safe.withOpacity(0.15),
+      color: AppColors.safe.withValues(alpha: 0.15),
       child: const Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -134,14 +126,13 @@ class _EmergencyBanner extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
-      color: AppColors.danger.withOpacity(0.2),
+      color: AppColors.danger.withValues(alpha: 0.2),
       child: Column(
         children: [
           const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.warning_rounded,
-                  color: AppColors.danger, size: 20),
+              Icon(Icons.warning_rounded, color: AppColors.danger, size: 20),
               SizedBox(width: 8),
               Text('🚨 ACTIVE EMERGENCY',
                   style: TextStyle(
@@ -154,7 +145,8 @@ class _EmergencyBanner extends StatelessWidget {
           Text(
             'Triggered by: ${emergency.triggeredBy.name.toUpperCase()}  •  '
             '${emergency.createdAt.hour}:${emergency.createdAt.minute.toString().padLeft(2, "0")}',
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
           if (emergency.livestreamUrl != null) ...[
             const SizedBox(height: 6),

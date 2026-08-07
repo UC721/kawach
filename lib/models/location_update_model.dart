@@ -51,7 +51,9 @@ class LocationUpdateModel {
       encryptedPayload:
           (map['encrypted_payload'] ?? map['encryptedPayload']) as String?,
       recordedAt: DateTime.parse(
-        map['recorded_at'] ?? map['recordedAt'] ?? DateTime.now().toIso8601String(),
+        map['recorded_at'] ??
+            map['recordedAt'] ??
+            DateTime.now().toIso8601String(),
       ),
     );
   }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 
+import '../services/onboarding_service.dart';
 import '../utils/constants.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -114,12 +116,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Text('Sensitive',
                         style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 11)),
+                            color: AppColors.textSecondary, fontSize: 11)),
                     Text('Firm',
                         style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 11)),
+                            color: AppColors.textSecondary, fontSize: 11)),
                   ],
                 ),
               ],
@@ -150,11 +150,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const SizedBox(height: 24),
+          const _SectionHeader('Safety & Data'),
+          _NavTile(
+            icon: Icons.medication_outlined,
+            title: 'Emergency Profile',
+            subtitle: 'Medical & legal info shown during SOS',
+            onTap: () =>
+                Navigator.pushNamed(context, AppRoutes.emergencyProfile),
+          ),
+          _NavTile(
+            icon: Icons.mark_email_unread_outlined,
+            title: 'Guardian Approval & SOS Feedback',
+            subtitle: 'Approve guardians, reply to live SOS',
+            onTap: () =>
+                Navigator.pushNamed(context, AppRoutes.guardianApproval),
+          ),
+          _NavTile(
+            icon: Icons.history,
+            title: 'Incident History',
+            subtitle: 'SOS, evidence and guardian timeline',
+            onTap: () =>
+                Navigator.pushNamed(context, AppRoutes.incidentHistory),
+          ),
+          _NavTile(
+            icon: Icons.privacy_tip_outlined,
+            title: 'Privacy & Data',
+            subtitle: 'Export, encryption key, erase data',
+            onTap: () => Navigator.pushNamed(context, AppRoutes.privacyConsole),
+          ),
+          _NavTile(
+            icon: Icons.sync,
+            title: 'Sync Status',
+            subtitle: 'Offline queue & conflict resolution',
+            onTap: () => Navigator.pushNamed(context, AppRoutes.syncStatus),
+          ),
+          const SizedBox(height: 24),
           const _SectionHeader('About'),
           const _InfoTile(Icons.info_outline, 'App Version', '1.0.0'),
-          const _InfoTile(Icons.security_outlined, 'Build', 'KAWACH Production'),
+          const _InfoTile(
+              Icons.security_outlined, 'Build', 'KAWACH Production'),
           const _InfoTile(
               Icons.shield_outlined, 'Data', 'End-to-end encrypted'),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.center,
+            child: TextButton(
+              onPressed: () async {
+                await context.read<OnboardingService>().reset();
+                if (!context.mounted) return;
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  AppRoutes.onboarding,
+                  (_) => false,
+                );
+              },
+              child: const Text('Replay onboarding tutorial'),
+            ),
+          ),
           const SizedBox(height: 32),
         ],
       ),
@@ -249,12 +301,63 @@ class _InfoTile extends StatelessWidget {
           Icon(icon, color: AppColors.textSecondary, size: 20),
           const SizedBox(width: 14),
           Text(label,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+              style:
+                  const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
           const Spacer(),
           Text(value,
-              style:
-                  const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13)),
         ],
+      ),
+    );
+  }
+}
+
+class _NavTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _NavTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.textSecondary, size: 22),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          color: AppColors.textPrimary, fontSize: 14)),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 11)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios,
+                size: 14, color: Colors.grey.shade300),
+          ],
+        ),
       ),
     );
   }

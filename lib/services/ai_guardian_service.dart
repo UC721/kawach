@@ -60,8 +60,7 @@ class AiGuardianService extends ChangeNotifier {
         return;
       }
 
-      if (
-          _possibleFreeFall &&
+      if (_possibleFreeFall &&
           magnitude > AppThresholds.aiGuardianImpactThreshold &&
           _gyroMagnitude > 2.5) {
         _possibleFreeFall = false;
@@ -76,8 +75,7 @@ class AiGuardianService extends ChangeNotifier {
         return;
       }
 
-      if (
-          magnitude > AppThresholds.aiGuardianSprintThreshold &&
+      if (magnitude > AppThresholds.aiGuardianSprintThreshold &&
           _gyroMagnitude > 4.0) {
         _emit(
           AiGuardianAlert(
@@ -108,8 +106,7 @@ class AiGuardianService extends ChangeNotifier {
     ValueChanged<AiGuardianAlert> onAlert,
   ) {
     final now = DateTime.now();
-    if (
-        _lastTriggerAt != null &&
+    if (_lastTriggerAt != null &&
         now.difference(_lastTriggerAt!) < const Duration(seconds: 20)) {
       return;
     }

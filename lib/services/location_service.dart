@@ -82,20 +82,20 @@ class LocationService extends ChangeNotifier {
         .stream(primaryKey: ['user_id'])
         .eq('user_id', userId)
         .map((docs) {
-      if (docs.isEmpty) {
-        return null;
-      }
+          if (docs.isEmpty) {
+            return null;
+          }
 
-      final doc = docs.first;
-      if (doc['live_lat'] == null || doc['live_lng'] == null) {
-        return null;
-      }
+          final doc = docs.first;
+          if (doc['live_lat'] == null || doc['live_lng'] == null) {
+            return null;
+          }
 
-      return {
-        'lat': (doc['live_lat'] as num).toDouble(),
-        'lng': (doc['live_lng'] as num).toDouble(),
-      };
-    });
+          return {
+            'lat': (doc['live_lat'] as num).toDouble(),
+            'lng': (doc['live_lng'] as num).toDouble(),
+          };
+        });
   }
 
   double distanceBetween(

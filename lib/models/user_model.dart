@@ -28,10 +28,11 @@ class UserModel {
       guardianIds: List<String>.from(
         data['guardians'] ?? data['guardian_ids'] ?? const [],
       ),
-      emergencyProfile: (data['emergencyProfile'] ?? data['emergency_profile']) != null
-          ? EmergencyProfileModel.fromMap(
-              (data['emergencyProfile'] ?? data['emergency_profile']) as Map<String, dynamic>)
-          : null,
+      emergencyProfile:
+          (data['emergencyProfile'] ?? data['emergency_profile']) != null
+              ? EmergencyProfileModel.fromMap((data['emergencyProfile'] ??
+                  data['emergency_profile']) as Map<String, dynamic>)
+              : null,
       createdAt: (data['createdAt'] ?? data['created_at']) != null
           ? DateTime.parse(data['createdAt'] ?? data['created_at'])
           : DateTime.now(),
@@ -39,6 +40,7 @@ class UserModel {
   }
 
   Map<String, dynamic> toMap() => {
+        'user_id': userId,
         'name': name,
         'phone': phone,
         'email': email,

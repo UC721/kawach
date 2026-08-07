@@ -49,10 +49,14 @@ class MeshPacketModel {
       emergencyId: map['emergency_id'] ?? map['emergencyId'] ?? '',
       userId: map['user_id'] ?? map['userId'] ?? '',
       createdAt: DateTime.parse(
-        map['created_at'] ?? map['createdAt'] ?? DateTime.now().toIso8601String(),
+        map['created_at'] ??
+            map['createdAt'] ??
+            DateTime.now().toIso8601String(),
       ),
       expiresAt: DateTime.parse(
-        map['expires_at'] ?? map['expiresAt'] ?? DateTime.now().toIso8601String(),
+        map['expires_at'] ??
+            map['expiresAt'] ??
+            DateTime.now().toIso8601String(),
       ),
       payload: map['payload'] ?? '',
       lat: (map['lat'] as num?)?.toDouble(),

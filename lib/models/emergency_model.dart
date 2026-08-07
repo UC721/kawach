@@ -1,4 +1,3 @@
-
 enum EmergencyStatus { active, resolved, cancelled }
 
 enum EmergencyTrigger {

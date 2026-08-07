@@ -31,7 +31,7 @@ class CommunityScreen extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppColors.primary.withOpacity(0.2),
+                  AppColors.primary.withValues(alpha: 0.2),
                   AppColors.surface,
                 ],
               ),
@@ -39,13 +39,13 @@ class CommunityScreen extends StatelessWidget {
             ),
             child: const Row(
               children: [
-                Icon(Icons.people_outline,
-                    color: AppColors.primary, size: 24),
+                Icon(Icons.people_outline, color: AppColors.primary, size: 24),
                 SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Real-time community incident reports near you',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    style:
+                        TextStyle(color: AppColors.textSecondary, fontSize: 13),
                   ),
                 ),
               ],
@@ -55,13 +55,13 @@ class CommunityScreen extends StatelessWidget {
             child: StreamBuilder<List<Map<String, dynamic>>>(
               stream: Supabase.instance.client
                   .from(FSCollection.reports)
-                  .stream(primaryKey: ['reportId'])
-                  .order('created_at', ascending: false),
+                  .stream(primaryKey: ['reportId']).order('created_at',
+                      ascending: false),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.primary));
+                      child:
+                          CircularProgressIndicator(color: AppColors.primary));
                 }
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(
@@ -69,25 +69,21 @@ class CommunityScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.shield_outlined,
-                            size: 64,
-                            color: AppColors.textSecondary),
+                            size: 64, color: AppColors.textSecondary),
                         SizedBox(height: 16),
                         Text('No incidents reported yet',
                             style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 16)),
+                                color: AppColors.textSecondary, fontSize: 16)),
                         SizedBox(height: 8),
                         Text('Be the first to report an incident',
                             style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 13)),
+                                color: AppColors.textSecondary, fontSize: 13)),
                       ],
                     ),
                   );
                 }
-                final reports = snapshot.data!
-                    .map((d) => ReportModel.fromMap(d))
-                    .toList();
+                final reports =
+                    snapshot.data!.map((d) => ReportModel.fromMap(d)).toList();
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: reports.length,

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -92,37 +91,41 @@ class AudioService extends ChangeNotifier {
     final fileName = 'audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
     final directory = 'evidence/$userId/$emergencyId';
     final manifestPath = '$directory/$fileName.manifest.json';
-    final totalChunks = (bytes.length / AppThresholds.evidenceChunkBytes).ceil();
+    final totalChunks =
+        (bytes.length / AppThresholds.evidenceChunkBytes).ceil();
 
     try {
-      for (var offset = 0; offset < bytes.length; offset += AppThresholds.evidenceChunkBytes) {
+      for (var offset = 0;
+          offset < bytes.length;
+          offset += AppThresholds.evidenceChunkBytes) {
         final end = offset + AppThresholds.evidenceChunkBytes < bytes.length
             ? offset + AppThresholds.evidenceChunkBytes
             : bytes.length;
         final chunkIndex = offset ~/ AppThresholds.evidenceChunkBytes;
         await _storage.from(FSStorage.evidenceBucket).uploadBinary(
-          '$directory/$fileName.part_$chunkIndex',
-          bytes.sublist(offset, end),
-          fileOptions: const FileOptions(upsert: true),
-        );
+              '$directory/$fileName.part_$chunkIndex',
+              bytes.sublist(offset, end),
+              fileOptions: const FileOptions(upsert: true),
+            );
       }
 
       await _storage.from(FSStorage.evidenceBucket).uploadBinary(
-        manifestPath,
-        Uint8List.fromList(
-          PayloadCipher.encryptObject(
-            {
-              'file_name': fileName,
-              'user_id': userId,
-              'emergency_id': emergencyId,
-              'chunk_count': totalChunks,
-              'content_type': 'audio/mp4',
-            },
-            scope: emergencyId,
-          ).codeUnits,
-        ),
-        fileOptions: const FileOptions(contentType: 'application/json', upsert: true),
-      );
+            manifestPath,
+            Uint8List.fromList(
+              PayloadCipher.encryptObject(
+                {
+                  'file_name': fileName,
+                  'user_id': userId,
+                  'emergency_id': emergencyId,
+                  'chunk_count': totalChunks,
+                  'content_type': 'audio/mp4',
+                },
+                scope: emergencyId,
+              ).codeUnits,
+            ),
+            fileOptions: const FileOptions(
+                contentType: 'application/json', upsert: true),
+          );
 
       return _storage.from(FSStorage.evidenceBucket).getPublicUrl(manifestPath);
     } catch (_) {

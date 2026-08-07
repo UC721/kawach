@@ -23,16 +23,13 @@ class LiveStreamService extends ChangeNotifier {
     // Generate a session-specific stream URL
     _currentSessionId =
         '${userId}_${emergencyId}_${DateTime.now().millisecondsSinceEpoch}';
-    _streamUrl =
-        '${AppKeys.streamingServerUrl}/$_currentSessionId';
+    _streamUrl = '${AppKeys.streamingServerUrl}/$_currentSessionId';
 
     _isStreaming = true;
     notifyListeners();
 
     // Store stream URL in Firestore so guardians can watch
-    await _db
-        .from(FSCollection.emergencies)
-        .update({
+    await _db.from(FSCollection.emergencies).update({
       'livestream_url': _streamUrl,
       'stream_started_at': DateTime.now().toIso8601String(),
     }).eq('emergency_id', emergencyId);

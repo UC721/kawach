@@ -10,7 +10,7 @@ enum AnomalyType { snatch, violentShake, none }
 class ShakeService extends ChangeNotifier {
   StreamSubscription<AccelerometerEvent>? _sub;
   bool _isActive = false;
-  
+
   // Configurable sensitivity threshold
   double sensitivity = 3.0;
 
@@ -19,7 +19,7 @@ class ShakeService extends ChangeNotifier {
   Timer? _resetTimer;
   bool _inCooldown = false;
   double _prevMagnitude = 0;
-  
+
   // Snatch detection vars
   bool _potentialSnatch = false;
   Timer? _snatchVerifyTimer;
@@ -30,13 +30,14 @@ class ShakeService extends ChangeNotifier {
   void startListening({required Function() onShake}) {
     _isActive = true;
     _onSosTrigger = onShake;
-    
+
     _sub = accelerometerEventStream(
       samplingPeriod: SensorInterval.normalInterval,
     ).listen((event) {
       if (_inCooldown) return;
 
-      final mag = sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
+      final mag =
+          sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
       final delta = (mag - _prevMagnitude).abs();
       _prevMagnitude = mag;
 
@@ -45,7 +46,7 @@ class ShakeService extends ChangeNotifier {
       if (delta > 40.0 * (sensitivity / 3.0)) {
         _potentialSnatch = true;
         _snatchVerifyTimer?.cancel();
-        
+
         // Wait a brief moment to check for 'loss of connection' or freefall/stillness
         _snatchVerifyTimer = Timer(const Duration(milliseconds: 500), () {
           if (_potentialSnatch && _prevMagnitude < 2.0) {
@@ -64,12 +65,12 @@ class ShakeService extends ChangeNotifier {
       if (delta > AppThresholds.shakeThreshold * (sensitivity / 3.0)) {
         _shakeCount++;
         _resetTimer?.cancel();
-        
+
         // Window to complete the rhythmic shakes
         _resetTimer = Timer(const Duration(seconds: 2), () {
           _shakeCount = 0;
         });
-        
+
         // Needs multiple rapid rhythmic spikes to trigger
         if (_shakeCount >= 4) {
           _triggerAnomaly(AnomalyType.violentShake);
@@ -83,7 +84,7 @@ class ShakeService extends ChangeNotifier {
     _shakeCount = 0;
     _potentialSnatch = false;
     _inCooldown = true;
-    
+
     debugPrint('--- ANOMALY DETECTED: ${type.name} ---');
     initiatePreSOSState();
 

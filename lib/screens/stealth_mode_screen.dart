@@ -35,13 +35,9 @@ class StealthModeScreen extends StatelessWidget {
                 TextButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    context
-                        .read<EmergencyService>()
-                        .deactivateStealthMode();
+                    context.read<EmergencyService>().deactivateStealthMode();
                     Navigator.pushNamedAndRemoveUntil(
-                        context,
-                        AppRoutes.emergencyDashboard,
-                        (_) => false);
+                        context, AppRoutes.emergencyDashboard, (_) => false);
                   },
                   child: const Text('Exit',
                       style: TextStyle(color: AppColors.danger)),

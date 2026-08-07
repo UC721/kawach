@@ -58,7 +58,7 @@ class SafetyStreamerService extends ChangeNotifier {
   void updateJourneyState(JourneyState newState, AuthService auth) {
     if (_currentState == newState) return;
     _currentState = newState;
-    
+
     // Instantly force an update on state change, especially SOS
     if (_lastPosition != null && auth.currentUserId != null) {
       _pushUpdate(auth.currentUserId!, force: true);
@@ -70,7 +70,7 @@ class SafetyStreamerService extends ChangeNotifier {
     if (!_isStreaming || _lastPosition == null) return;
 
     final now = DateTime.now();
-    
+
     // Throttle checks (already handled by distanceFilter, but ensure time throttle too unless forced)
     if (!force && _lastUpdateTime != null) {
       if (now.difference(_lastUpdateTime!).inSeconds < 10) {
@@ -82,7 +82,7 @@ class SafetyStreamerService extends ChangeNotifier {
 
     try {
       final batteryLevel = await _battery.batteryLevel;
-      
+
       await _supabase.from('live_journeys').upsert({
         'user_id': userId,
         'latitude': _lastPosition!.latitude,
@@ -92,7 +92,8 @@ class SafetyStreamerService extends ChangeNotifier {
         'state': _currentState.name,
         'updated_at': now.toIso8601String(),
       });
-      debugPrint('--- KAWACH: SafetyStreamer pushed update: ${_currentState.name} ---');
+      debugPrint(
+          '--- KAWACH: SafetyStreamer pushed update: ${_currentState.name} ---');
     } catch (e) {
       debugPrint('Error pushing live journey update: $e');
     }
@@ -101,10 +102,13 @@ class SafetyStreamerService extends ChangeNotifier {
   void stopStreaming(AuthService auth) {
     _positionStreamSub?.cancel();
     _periodicTimer?.cancel();
-    
+
     if (_isStreaming && auth.currentUserId != null) {
       // Optional: Clean up or mark journey as ended in DB
-      _supabase.from('live_journeys').delete().eq('user_id', auth.currentUserId!);
+      _supabase
+          .from('live_journeys')
+          .delete()
+          .eq('user_id', auth.currentUserId!);
     }
 
     _isStreaming = false;

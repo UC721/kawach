@@ -21,7 +21,8 @@ class DangerZoneModel {
 
   factory DangerZoneModel.fromMap(Map<String, dynamic> data) {
     return DangerZoneModel(
-      zoneId: (data['id'] ?? data['zoneId'] ?? data['zone_id'] ?? '').toString(),
+      zoneId:
+          (data['id'] ?? data['zoneId'] ?? data['zone_id'] ?? '').toString(),
       lat: (data['latitude'] ?? data['lat'] ?? 0).toDouble(),
       lng: (data['longitude'] ?? data['lng'] ?? 0).toDouble(),
       severity: DangerSeverity.values.firstWhere(
@@ -29,8 +30,12 @@ class DangerZoneModel {
         orElse: () => DangerSeverity.low,
       ),
       reportCount: data['report_count'] ?? data['reportCount'] ?? 0,
-      lastUpdated: (data['created_at'] ?? data['last_updated'] ?? data['lastUpdated']) != null
-          ? DateTime.parse(data['created_at'] ?? data['last_updated'] ?? data['lastUpdated'])
+      lastUpdated: (data['created_at'] ??
+                  data['last_updated'] ??
+                  data['lastUpdated']) !=
+              null
+          ? DateTime.parse(
+              data['created_at'] ?? data['last_updated'] ?? data['lastUpdated'])
           : DateTime.now(),
     );
   }

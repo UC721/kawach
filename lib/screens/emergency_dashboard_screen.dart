@@ -15,7 +15,6 @@ class EmergencyDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final emergency = context.watch<EmergencyService>();
     final location = context.watch<LocationService>();
     final audio = context.watch<AudioService>();
     final stream = context.watch<LiveStreamService>();
@@ -35,7 +34,7 @@ class EmergencyDashboardScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.danger.withOpacity(0.08),
+                    AppColors.danger.withValues(alpha: 0.08),
                     Colors.transparent
                   ],
                   begin: Alignment.topCenter,
@@ -60,8 +59,8 @@ class EmergencyDashboardScreen extends StatelessWidget {
                   Text(
                     'Emergency responders and guardians have been alerted',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                        color: AppColors.textSecondary, fontSize: 13),
+                    style:
+                        TextStyle(color: AppColors.textSecondary, fontSize: 13),
                   ),
                 ],
               ),
@@ -130,7 +129,7 @@ class EmergencyDashboardScreen extends StatelessWidget {
                         border: Border.all(color: Colors.grey.shade200),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.02),
+                            color: Colors.black.withValues(alpha: 0.02),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -141,7 +140,8 @@ class EmergencyDashboardScreen extends StatelessWidget {
                         children: [
                           const Text('Current Location',
                               style: TextStyle(
-                                  color: AppColors.textSecondary, fontSize: 12)),
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12)),
                           const SizedBox(height: 4),
                           Text(
                             '${location.currentPosition!.latitude.toStringAsFixed(6)}, '
@@ -205,19 +205,15 @@ class EmergencyDashboardScreen extends StatelessWidget {
                         style: TextStyle(fontWeight: FontWeight.w700),
                       ),
                       onPressed: () async {
-                        await context
-                            .read<EmergencyService>()
-                            .resolveEmergency(
-                          locationService:
-                              context.read<LocationService>(),
-                          audioService: context.read<AudioService>(),
-                          streamService:
-                              context.read<LiveStreamService>(),
-                          backgroundSosService:
-                              context.read<BackgroundSosService>(),
-                          meshRelayService:
-                              context.read<MeshRelayService>(),
-                        );
+                        await context.read<EmergencyService>().resolveEmergency(
+                              locationService: context.read<LocationService>(),
+                              audioService: context.read<AudioService>(),
+                              streamService: context.read<LiveStreamService>(),
+                              backgroundSosService:
+                                  context.read<BackgroundSosService>(),
+                              meshRelayService:
+                                  context.read<MeshRelayService>(),
+                            );
                         if (context.mounted) {
                           Navigator.pushNamedAndRemoveUntil(
                               context, AppRoutes.dashboard, (_) => false);
@@ -256,12 +252,13 @@ class _StatusIndicatorCard extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color:
-              active ? AppColors.primary.withOpacity(0.4) : Colors.grey.shade200,
+          color: active
+              ? AppColors.primary.withValues(alpha: 0.4)
+              : Colors.grey.shade200,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -270,18 +267,19 @@ class _StatusIndicatorCard extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon,
-              color: active ? AppColors.primary : Colors.grey.shade400, size: 24),
+              color: active ? AppColors.primary : Colors.grey.shade400,
+              size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Text(title,
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+                style: const TextStyle(
+                    color: AppColors.textPrimary, fontSize: 14)),
           ),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: active
-                  ? AppColors.safe.withOpacity(0.2)
+                  ? AppColors.safe.withValues(alpha: 0.2)
                   : Colors.grey.shade100,
               borderRadius: BorderRadius.circular(20),
             ),
@@ -320,9 +318,9 @@ class _ActionBtn extends StatelessWidget {
       child: Container(
         height: 56,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.2),
+          color: color.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withOpacity(0.4)),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -330,8 +328,7 @@ class _ActionBtn extends StatelessWidget {
             Icon(icon, color: color, size: 20),
             const SizedBox(width: 8),
             Text(label,
-                style: TextStyle(
-                    color: color, fontWeight: FontWeight.w600)),
+                style: TextStyle(color: color, fontWeight: FontWeight.w600)),
           ],
         ),
       ),

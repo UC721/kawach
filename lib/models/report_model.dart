@@ -1,4 +1,3 @@
-
 class ReportModel {
   final String reportId;
   final String userId;
@@ -24,15 +23,16 @@ class ReportModel {
 
   factory ReportModel.fromMap(Map<String, dynamic> data) {
     return ReportModel(
-      reportId: (data['id'] ?? data['reportId'] ?? data['report_id'] ?? '').toString(),
+      reportId: (data['id'] ?? data['reportId'] ?? data['report_id'] ?? '')
+          .toString(),
       userId: (data['userId'] ?? data['user_id'] ?? '').toString(),
       description: data['description'] ?? '',
       imageUrl: data['image_url'] ?? data['imageUrl'],
       lat: (data['latitude'] ?? data['lat'])?.toDouble(),
       lng: (data['longitude'] ?? data['lng'])?.toDouble(),
       address: data['address'] ?? data['location'],
-      createdAt: (data['created_at'] ?? data['createdAt']) != null 
-          ? DateTime.parse(data['created_at'] ?? data['createdAt']) 
+      createdAt: (data['created_at'] ?? data['createdAt']) != null
+          ? DateTime.parse(data['created_at'] ?? data['createdAt'])
           : DateTime.now(),
       upvotes: data['upvotes'] ?? 0,
     );

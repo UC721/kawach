@@ -95,9 +95,7 @@ class MeshRelayService extends ChangeNotifier {
         .stream(primaryKey: ['alert_id'])
         .eq('volunteer_id', volunteerId)
         .map((rows) {
-      return rows
-          .map(NearbyAlertModel.fromMap)
-          .where((alert) {
+          return rows.map(NearbyAlertModel.fromMap).where((alert) {
             if (!alert.isActive) {
               return false;
             }
@@ -111,10 +109,9 @@ class MeshRelayService extends ChangeNotifier {
                   alert.lng!,
                 ) <=
                 AppThresholds.meshRelayRadiusMeters;
-          })
-          .toList()
-        ..sort((left, right) => right.createdAt.compareTo(left.createdAt));
-    });
+          }).toList()
+            ..sort((left, right) => right.createdAt.compareTo(left.createdAt));
+        });
   }
 
   Future<void> acknowledgePacket({

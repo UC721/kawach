@@ -44,14 +44,16 @@ class SmsService extends ChangeNotifier {
     required String message,
   }) async {
     try {
-      final res = await http.post(
-        Uri.parse(AppKeys.smsGatewayUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${AppKeys.smsGatewayApiKey}',
-        },
-        body: jsonEncode({'to': to, 'message': message}),
-      ).timeout(const Duration(seconds: 10));
+      final res = await http
+          .post(
+            Uri.parse(AppKeys.smsGatewayUrl),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ${AppKeys.smsGatewayApiKey}',
+            },
+            body: jsonEncode({'to': to, 'message': message}),
+          )
+          .timeout(const Duration(seconds: 10));
       return res.statusCode == 200;
     } catch (_) {
       // Log failure; will be synced via offline service

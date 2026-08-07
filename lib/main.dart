@@ -10,17 +10,22 @@ import 'services/auth_service.dart';
 import 'services/background_sos_service.dart';
 import 'services/camera_evidence_service.dart';
 import 'services/danger_zone_service.dart';
+import 'services/emergency_profile_service.dart';
 import 'services/emergency_service.dart';
 import 'services/evidence_vault_service.dart';
+import 'services/guardian_lifecycle_service.dart';
 import 'services/guardian_network_service.dart';
+import 'services/incident_history_service.dart';
 import 'services/live_stream_service.dart';
 import 'services/location_service.dart';
 import 'services/mesh_relay_service.dart';
 import 'services/motion_detection_service.dart';
 import 'services/notification_service.dart';
 import 'services/offline_emergency_service.dart';
+import 'services/onboarding_service.dart';
 import 'services/panic_detection_service.dart';
 import 'services/predictive_danger_service.dart';
+import 'services/privacy_service.dart';
 import 'services/risk_analysis_service.dart';
 import 'services/route_safety_service.dart';
 import 'services/shake_service.dart';
@@ -76,6 +81,11 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => SirenService()),
         ChangeNotifierProvider(create: (_) => RouteSafetyService()),
         ChangeNotifierProvider(create: (_) => AiGuardianService()),
+        ChangeNotifierProvider(create: (_) => EmergencyProfileService()),
+        ChangeNotifierProvider(create: (_) => GuardianLifecycleService()),
+        ChangeNotifierProvider(create: (_) => IncidentHistoryService()),
+        ChangeNotifierProvider(create: (_) => PrivacyService()),
+        ChangeNotifierProvider(create: (_) => OnboardingService()),
       ],
       child: const KawachApp(),
     ),

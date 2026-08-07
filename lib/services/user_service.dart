@@ -69,10 +69,8 @@ class UserService extends ChangeNotifier {
 
   Future<List<GuardianModel>> getGuardians(String userId) async {
     try {
-      final response = await _db
-          .from(FSCollection.guardians)
-          .select()
-          .eq('user_id', userId);
+      final response =
+          await _db.from(FSCollection.guardians).select().eq('user_id', userId);
       return (response as List)
           .map((item) => GuardianModel.fromMap(item as Map<String, dynamic>))
           .toList();

@@ -5,7 +5,7 @@ import '../models/guardian_model.dart';
 class NotificationService extends ChangeNotifier {
   // final FirebaseMessaging _fcm = FirebaseMessaging.instance; // REMOVED
   final FlutterLocalNotificationsPlugin _localNotifications =
-  FlutterLocalNotificationsPlugin();
+      FlutterLocalNotificationsPlugin();
 
   String? _fcmToken;
   String? get fcmToken => _fcmToken;
@@ -20,8 +20,7 @@ class NotificationService extends ChangeNotifier {
 
     // Initialize local notifications (skip for Web)
     if (!kIsWeb) {
-      const androidInit =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
+      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
 
       const iosInit = DarwinInitializationSettings();
 
@@ -54,7 +53,7 @@ class NotificationService extends ChangeNotifier {
         token: guardian.fcmToken!,
         title: '🚨 KAWACH EMERGENCY ALERT',
         body:
-        '${guardian.name.isNotEmpty ? "Your contact" : "User"} has triggered SOS! Tap to view location.',
+            '${guardian.name.isNotEmpty ? "Your contact" : "User"} has triggered SOS! Tap to view location.',
         data: {
           'emergencyId': emergencyId,
           'userId': userId,
@@ -72,7 +71,7 @@ class NotificationService extends ChangeNotifier {
     required String body,
     Map<String, String>? data,
   }) async {
-    // FCM Http call removed. 
+    // FCM Http call removed.
     // Usually this is done server-side anyway.
     debugPrint('Mock push notification sent to $token: $title / $body');
   }

@@ -25,8 +25,7 @@ class SosScreen extends StatefulWidget {
   State<SosScreen> createState() => _SosScreenState();
 }
 
-class _SosScreenState extends State<SosScreen>
-    with TickerProviderStateMixin {
+class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late AnimationController _countdownController;
   late Animation<double> _pulseAnim;
@@ -55,8 +54,7 @@ class _SosScreenState extends State<SosScreen>
 
   void _startCountdown() {
     _countdownController.forward();
-    _countdownTimer =
-        Timer.periodic(const Duration(seconds: 1), (timer) {
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_isCancelled) {
         timer.cancel();
         return;
@@ -92,8 +90,7 @@ class _SosScreenState extends State<SosScreen>
     );
 
     if (mounted) {
-      Navigator.pushReplacementNamed(
-          context, AppRoutes.emergencyDashboard);
+      Navigator.pushReplacementNamed(context, AppRoutes.emergencyDashboard);
     }
   }
 
@@ -116,7 +113,8 @@ class _SosScreenState extends State<SosScreen>
     final emergency = context.watch<EmergencyService>();
     if (emergency.stealthMode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.stealthMode, (_) => false);
+        Navigator.pushNamedAndRemoveUntil(
+            context, AppRoutes.stealthMode, (_) => false);
       });
     }
 
@@ -155,7 +153,7 @@ class _SosScreenState extends State<SosScreen>
               Text(
                 'Emergency services will be alerted',
                 style: TextStyle(
-                    color: Colors.white.withOpacity(0.7), fontSize: 15),
+                    color: Colors.white.withValues(alpha: 0.7), fontSize: 15),
               ),
               const Spacer(),
               // Countdown circle
@@ -168,13 +166,12 @@ class _SosScreenState extends State<SosScreen>
                     height: 180,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       border: Border.all(color: Colors.white, width: 4),
                     ),
                     child: Center(
                       child: _triggered
-                          ? const CircularProgressIndicator(
-                              color: Colors.white)
+                          ? const CircularProgressIndicator(color: Colors.white)
                           : Text(
                               '$_countdown',
                               style: const TextStyle(
@@ -193,7 +190,7 @@ class _SosScreenState extends State<SosScreen>
                     ? 'ALERTING EMERGENCY CONTACTS...'
                     : 'Tap CANCEL to abort',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                   fontSize: 14,
                   letterSpacing: 1.5,
                 ),
@@ -207,7 +204,7 @@ class _SosScreenState extends State<SosScreen>
                     width: 160,
                     height: 56,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(30),
                       border: Border.all(color: Colors.white54),
                     ),

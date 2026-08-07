@@ -220,7 +220,8 @@ class EmergencyService extends ChangeNotifier {
         .from(FSCollection.emergencies)
         .stream(primaryKey: ['emergency_id'])
         .eq('emergency_id', emergencyId)
-        .map((docs) => docs.isNotEmpty ? EmergencyModel.fromMap(docs.first) : null);
+        .map((docs) =>
+            docs.isNotEmpty ? EmergencyModel.fromMap(docs.first) : null);
   }
 
   Stream<EmergencyModel?> streamActiveEmergencyForUser(String userId) {
@@ -229,14 +230,18 @@ class EmergencyService extends ChangeNotifier {
         .stream(primaryKey: ['emergency_id'])
         .eq('user_id', userId)
         .map((docs) {
-      final activeDocs = docs.where((doc) => doc['status'] == EmergencyStatus.active.name).toList();
-      activeDocs.sort((left, right) {
-        final leftDate = left['created_at'] as String? ?? '';
-        final rightDate = right['created_at'] as String? ?? '';
-        return rightDate.compareTo(leftDate);
-      });
-      return activeDocs.isNotEmpty ? EmergencyModel.fromMap(activeDocs.first) : null;
-    });
+          final activeDocs = docs
+              .where((doc) => doc['status'] == EmergencyStatus.active.name)
+              .toList();
+          activeDocs.sort((left, right) {
+            final leftDate = left['created_at'] as String? ?? '';
+            final rightDate = right['created_at'] as String? ?? '';
+            return rightDate.compareTo(leftDate);
+          });
+          return activeDocs.isNotEmpty
+              ? EmergencyModel.fromMap(activeDocs.first)
+              : null;
+        });
   }
 
   Future<void> _startAudioEvidence(

@@ -32,6 +32,12 @@ class AppRoutes {
   static const riskAlert = '/risk-alert';
   static const profile = '/profile';
   static const settings = '/settings';
+  static const onboarding = '/onboarding';
+  static const emergencyProfile = '/emergency-profile';
+  static const guardianApproval = '/guardian-approval';
+  static const incidentHistory = '/incident-history';
+  static const privacyConsole = '/privacy-console';
+  static const syncStatus = '/sync-status';
 }
 
 class AppStrings {
@@ -51,7 +57,6 @@ class AppStrings {
 }
 
 class AppKeys {
-  static const googleMapsApiKey = 'AIzaSyBCADPPcrSqeHA1jycqDJZejrpGTDgol3w';
   static const smsGatewayUrl = 'https://api.example.com/sms';
   static const smsGatewayApiKey = 'YOUR_SMS_GATEWAY_API_KEY';
   static const streamingServerUrl = 'https://stream.example.com/live';
@@ -89,6 +94,9 @@ class FSCollection {
   static const volunteerAlerts = 'volunteer_alerts';
   static const meshPackets = 'mesh_packets';
   static const meshAcks = 'mesh_acknowledgements';
+  static const emergencyProfiles = 'emergency_profiles';
+  static const guardianRequests = 'guardian_requests';
+  static const sosAcknowledgements = 'sos_acknowledgements';
 }
 
 class FSStorage {

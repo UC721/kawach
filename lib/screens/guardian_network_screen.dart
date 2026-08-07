@@ -12,8 +12,7 @@ class GuardianNetworkScreen extends StatefulWidget {
   const GuardianNetworkScreen({super.key});
 
   @override
-  State<GuardianNetworkScreen> createState() =>
-      _GuardianNetworkScreenState();
+  State<GuardianNetworkScreen> createState() => _GuardianNetworkScreenState();
 }
 
 class _GuardianNetworkScreenState extends State<GuardianNetworkScreen>
@@ -32,9 +31,10 @@ class _GuardianNetworkScreenState extends State<GuardianNetworkScreen>
 
   Future<void> _loadNearby() async {
     try {
-      final pos =
-          await context.read<LocationService>().getCurrentPosition();
-      await context.read<GuardianNetworkService>().findNearbyVolunteers(
+      final locationService = context.read<LocationService>();
+      final guardianService = context.read<GuardianNetworkService>();
+      final pos = await locationService.getCurrentPosition();
+      await guardianService.findNearbyVolunteers(
           lat: pos.latitude, lng: pos.longitude);
     } catch (_) {}
   }
@@ -43,9 +43,10 @@ class _GuardianNetworkScreenState extends State<GuardianNetworkScreen>
     if (_nameCtrl.text.isEmpty || _phoneCtrl.text.isEmpty) return;
     setState(() => _isJoining = true);
     try {
-      final pos =
-          await context.read<LocationService>().getCurrentPosition();
-      await context.read<GuardianNetworkService>().registerAsVolunteer(
+      final locationService = context.read<LocationService>();
+      final guardianService = context.read<GuardianNetworkService>();
+      final pos = await locationService.getCurrentPosition();
+      await guardianService.registerAsVolunteer(
           name: _nameCtrl.text.trim(),
           phone: _phoneCtrl.text.trim(),
           lat: pos.latitude,
@@ -62,8 +63,7 @@ class _GuardianNetworkScreenState extends State<GuardianNetworkScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Error: $e'),
-              backgroundColor: AppColors.danger),
+              content: Text('Error: $e'), backgroundColor: AppColors.danger),
         );
       }
     } finally {
@@ -119,8 +119,7 @@ class _GuardianNetworkScreenState extends State<GuardianNetworkScreen>
                               color: AppColors.textSecondary, fontSize: 16)),
                       const SizedBox(height: 8),
                       TextButton(
-                          onPressed: _loadNearby,
-                          child: const Text('Refresh')),
+                          onPressed: _loadNearby, child: const Text('Refresh')),
                     ],
                   ),
                 );
@@ -173,10 +172,10 @@ class _GuardianNetworkScreenState extends State<GuardianNetworkScreen>
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.safe.withOpacity(0.1),
+                    color: AppColors.safe.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                        color: AppColors.safe.withOpacity(0.3)),
+                        color: AppColors.safe.withValues(alpha: 0.3)),
                   ),
                   child: const Text(
                     'Join as a volunteer to receive emergency alerts from users near you. '
@@ -188,8 +187,7 @@ class _GuardianNetworkScreenState extends State<GuardianNetworkScreen>
                 const SizedBox(height: 24),
                 _buildField(_nameCtrl, 'Your Name', Icons.person_outline),
                 const SizedBox(height: 16),
-                _buildField(_phoneCtrl, 'Phone Number',
-                    Icons.phone_outlined,
+                _buildField(_phoneCtrl, 'Phone Number', Icons.phone_outlined,
                     type: TextInputType.phone),
                 const SizedBox(height: 32),
                 SizedBox(
@@ -227,8 +225,7 @@ class _GuardianNetworkScreenState extends State<GuardianNetworkScreen>
       style: const TextStyle(color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon:
-            Icon(icon, color: AppColors.textSecondary, size: 20),
+        prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 20),
       ),
     );
   }
@@ -255,9 +252,9 @@ class _IncomingAlertCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.danger.withOpacity(0.12),
+          color: AppColors.danger.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.danger.withOpacity(0.35)),
+          border: Border.all(color: AppColors.danger.withValues(alpha: 0.35)),
         ),
         child: Row(
           children: [

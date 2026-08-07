@@ -28,10 +28,8 @@ class DangerZoneService extends ChangeNotifier {
   Stream<List<DangerZoneModel>> streamDangerZones() {
     return _db
         .from(FSCollection.dangerZones)
-        .stream(primaryKey: ['id'])
-        .map((docs) {
-      _dangerZones =
-          docs.map((d) => DangerZoneModel.fromMap(d)).toList();
+        .stream(primaryKey: ['id']).map((docs) {
+      _dangerZones = docs.map((d) => DangerZoneModel.fromMap(d)).toList();
       notifyListeners();
       return _dangerZones;
     });
@@ -72,22 +70,20 @@ class DangerZoneService extends ChangeNotifier {
       if (lat == null || lng == null) continue;
 
       // Simple grid-based clustering (0.005° ≈ ~500m)
-      final key =
-          '${(lat / 0.005).round()}_${(lng / 0.005).round()}';
+      final key = '${(lat / 0.005).round()}_${(lng / 0.005).round()}';
       clusters.putIfAbsent(key, () => []).add({'lat': lat, 'lng': lng});
     }
 
     // Write aggregated danger zones
     // In Supabase, batching is done by inserting/upserting a list.
     final List<Map<String, dynamic>> updates = [];
-    
+
     for (final entry in clusters.entries) {
       final points = entry.value;
       final avgLat =
           points.map((p) => p['lat']!).reduce((a, b) => a + b) / points.length;
       final avgLng =
-          points.map((p) => p['lng']!).reduce((a, b) => a + b) /
-              points.length;
+          points.map((p) => p['lng']!).reduce((a, b) => a + b) / points.length;
 
       DangerSeverity severity;
       if (points.length >= 10) {
@@ -116,11 +112,10 @@ class DangerZoneService extends ChangeNotifier {
   }
 
   // ── Get nearby danger zones sorted by proximity ──────────────
-  List<DangerZoneModel> getNearbyZones(
-      double lat, double lng, {double radiusMeters = 1000}) {
+  List<DangerZoneModel> getNearbyZones(double lat, double lng,
+      {double radiusMeters = 1000}) {
     return _dangerZones.where((z) {
-      return Geolocator.distanceBetween(lat, lng, z.lat, z.lng) <=
-          radiusMeters;
+      return Geolocator.distanceBetween(lat, lng, z.lat, z.lng) <= radiusMeters;
     }).toList()
       ..sort((a, b) => Geolocator.distanceBetween(lat, lng, a.lat, a.lng)
           .compareTo(Geolocator.distanceBetween(lat, lng, b.lat, b.lng)));
