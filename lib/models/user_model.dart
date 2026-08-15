@@ -41,8 +41,8 @@ class UserModel {
         'phone': phone,
         'email': email,
         'guardians': guardianIds,
-        'emergency_profile': emergencyProfile?.toMap(),
-        'created_at': createdAt.toIso8601String(),
+        'emergencyProfile': emergencyProfile?.toMap(),
+        'createdAt': createdAt.toIso8601String(),
       };
 
   UserModel copyWith({
