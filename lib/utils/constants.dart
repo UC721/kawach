@@ -86,6 +86,31 @@ class AppThresholds {
 }
 
 // ============================================================
+// MeshDefaults – Mesh Emergency Network Protocol Config
+// ============================================================
+class MeshDefaults {
+  /// Default message time-to-live in seconds (5 minutes).
+  static const int ttlSeconds = 300;
+
+  /// Maximum hop count before a message is dropped.
+  static const int maxHops = 10;
+
+  /// Expected number of messages in a single bloom-filter generation.
+  static const int bloomExpectedItems = 10000;
+
+  /// Target false-positive rate for the deduplication bloom filter.
+  static const double bloomFalsePositiveRate = 0.01;
+
+  /// How often (in seconds) the bloom filter should be reset.
+  static const int bloomResetIntervalSeconds = 600;
+
+  /// Fallback shared network key (hex-encoded, 256-bit).
+  /// In production this is derived per-network via PBKDF2.
+  static const String fallbackNetworkKeyHex =
+      'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2';
+}
+
+// ============================================================
 // FirestoreCollections – Firestore path constants
 // ============================================================
 class FSCollection {
