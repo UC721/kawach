@@ -86,7 +86,7 @@ class UserService extends ChangeNotifier {
       final res = await _db
           .from(FSCollection.guardians)
           .select()
-          .eq('userId', userId);
+          .eq('user_id', userId);
       return (res as List).map((d) => GuardianModel.fromMap(d)).toList();
     } catch (e) {
       return [];
@@ -111,7 +111,7 @@ class UserService extends ChangeNotifier {
   }
 
   Future<void> removeGuardian(String userId, String guardianId) async {
-    await _db.from(FSCollection.guardians).delete().eq('guardianId', guardianId);
+    await _db.from(FSCollection.guardians).delete().eq('id', guardianId);
     // Note: Array remove is tricky in plain PostgREST without an RPC. Skip for demo.
     await loadCurrentUser(userId);
   }

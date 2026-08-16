@@ -39,12 +39,11 @@ class ReportModel {
   }
 
   Map<String, dynamic> toMap() => {
-        // userId is missing in user's SQL, but kept for model consistency
+        'user_id': userId,
         'description': description,
         'image_url': imageUrl,
-        'latitude': lat,
-        'longitude': lng,
-        'location': address,
+        'lat': lat,
+        'lng': lng,
         'address': address,
         'created_at': createdAt.toIso8601String(),
       };

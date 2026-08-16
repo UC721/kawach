@@ -55,7 +55,7 @@ class CommunityScreen extends StatelessWidget {
             child: StreamBuilder<List<Map<String, dynamic>>>(
               stream: Supabase.instance.client
                   .from(FSCollection.reports)
-                  .stream(primaryKey: ['reportId'])
+                  .stream(primaryKey: ['id'])
                   .order('created_at', ascending: false),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {

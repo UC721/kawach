@@ -51,5 +51,9 @@ app.*.map.json
 google-services.json
 GoogleService-Info.plist
 
+# ── Supabase local dev ─────────────────────────────────────────
+supabase/.temp/
+supabase/.branches/
+
 ios/
 linux/

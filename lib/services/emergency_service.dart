@@ -141,8 +141,8 @@ class EmergencyService extends ChangeNotifier {
             audioUrl: audioUrl);
         await _db
             .from(FSCollection.emergencies)
-            .update({'audioUrl': audioUrl})
-            .eq('emergencyId', emergencyId);
+            .update({'audio_url': audioUrl})
+            .eq('id', emergencyId);
       }
     } catch (_) {}
   }
@@ -164,8 +164,8 @@ class EmergencyService extends ChangeNotifier {
             videoUrl: videoUrl);
         await _db
             .from(FSCollection.emergencies)
-            .update({'videoUrl': videoUrl})
-            .eq('emergencyId', emergencyId);
+            .update({'video_url': videoUrl})
+            .eq('id', emergencyId);
       }
     } catch (_) {}
   }
@@ -198,8 +198,8 @@ class EmergencyService extends ChangeNotifier {
         .from(FSCollection.emergencies)
         .update({
       'status': EmergencyStatus.resolved.name,
-      'resolvedAt': DateTime.now().toIso8601String(),
-    }).eq('emergencyId', emergencyId);
+      'resolved_at': DateTime.now().toIso8601String(),
+    }).eq('id', emergencyId);
 
     _activeEmergency = null;
     _isActive = false;
@@ -211,8 +211,8 @@ class EmergencyService extends ChangeNotifier {
   Stream<EmergencyModel?> streamEmergency(String emergencyId) {
     return _db
         .from(FSCollection.emergencies)
-        .stream(primaryKey: ['emergencyId'])
-        .eq('emergencyId', emergencyId)
+        .stream(primaryKey: ['id'])
+        .eq('id', emergencyId)
         .map((docs) => docs.isNotEmpty ? EmergencyModel.fromMap(docs.first) : null);
   }
 
@@ -220,13 +220,13 @@ class EmergencyService extends ChangeNotifier {
   Stream<EmergencyModel?> streamActiveEmergencyForUser(String userId) {
     return _db
         .from(FSCollection.emergencies)
-        .stream(primaryKey: ['emergencyId'])
-        .eq('userId', userId)
+        .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
         .map((docs) {
           final activeDocs = docs.where((d) => d['status'] == EmergencyStatus.active.name).toList();
           activeDocs.sort((a, b) {
-            final dateA = a['created_at'] ?? a['createdAt'];
-            final dateB = b['created_at'] ?? b['createdAt'];
+            final dateA = a['created_at'];
+            final dateB = b['created_at'];
             return (dateB as String).compareTo(dateA as String);
           });
           return activeDocs.isNotEmpty
